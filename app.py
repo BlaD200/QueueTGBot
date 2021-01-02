@@ -7,7 +7,7 @@ from flask import Flask, request
 from telegram.ext import Dispatcher
 
 from bot.config import WEBHOOK_URL, BOT_TOKEN
-from bot.setup_bot import setup
+from bot.setup_bot import setup, bot
 
 
 app = Flask(__name__)
@@ -36,7 +36,6 @@ def webhook():
 
 if __name__ == '__main__':
     # Check, if bot correctly connect to Telegram API
-    bot = telegram.Bot(BOT_TOKEN)
     info = bot.get_me()
     logger.info(f'Bot info: {info}')
     logger.info(bot.get_webhook_info())
