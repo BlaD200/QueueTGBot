@@ -47,5 +47,3 @@ logger.info(bot.get_webhook_info())
 
 dispatcher, _ = setup()
 logging.info('Started server with webhook')
-# app.debug = True
-app.run()
