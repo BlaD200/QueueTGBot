@@ -47,5 +47,5 @@ if __name__ == '__main__':
 
     dispatcher, _ = setup()
     logging.info('Started server with webhook')
-    app.debug = True
-    app.run()
+    # app.debug = True
+    app.run(threaded=True, port=5000)
