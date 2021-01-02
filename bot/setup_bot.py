@@ -1,6 +1,6 @@
 import logging
 
-from telegram import Update, ParseMode
+from telegram import Update, ParseMode, Bot
 from telegram.ext import Updater, CallbackContext, MessageHandler, Filters
 
 from bot.config import BOT_TOKEN
@@ -10,6 +10,8 @@ from bot.config import BOT_TOKEN
 logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
                     level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
+
+bot = Bot(BOT_TOKEN)
 
 
 def setup():

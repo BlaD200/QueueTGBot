@@ -7,7 +7,7 @@ from flask import Flask, request
 from telegram.ext import Dispatcher
 
 from bot.config import WEBHOOK_URL, BOT_TOKEN
-from bot.setup_bot import setup
+from bot.setup_bot import setup, bot
 
 
 app = Flask(__name__)
@@ -34,19 +34,24 @@ def webhook():
     return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
 
-if __name__ == '__main__':
+def before_run():
     # Check, if bot correctly connect to Telegram API
-    bot = telegram.Bot(BOT_TOKEN)
     info = bot.get_me()
     logger.info(f'Bot info: {info}')
-    logger.info(bot.get_webhook_info())
+    logger.info(f'Bot webhook check: {bot.get_webhook_info()}')
 
     if bot.get_webhook_info()['url'] != WEBHOOK_URL:
         urlopen(f'https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}')
 
-    logger.info(bot.get_webhook_info())
+    logger.info(f'Bot webhook after check: {bot.get_webhook_info()}')
 
+    global dispatcher
     dispatcher, _ = setup()
     logging.info('Started server with webhook')
-    # app.debug = True
-    app.run(threaded=True, port=5000)
+
+
+if __name__ == '__main__':
+    before_run()
+    app.run()
+else:
+    before_run()
