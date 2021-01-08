@@ -1,8 +1,20 @@
-from telegram import Bot, User
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
+import logging
 
-from bot.command_handlers import *
+from telegram import Bot, User, Update
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
+
+from bot.command_handlers import (
+    start_command,
+    create_queue_command,
+    delete_queue_command,
+    show_queues_command,
+    help_command,
+    about_me_command,
+    unimplemented_command_handler,
+    unsupported_command_handler
+)
 from bot.config import BOT_TOKEN
+from sql import create_session, get_tables, get_database_revision
 
 
 # Registering logger here
@@ -16,15 +28,19 @@ bot = Bot(BOT_TOKEN)
 def setup():
     """
     Setting up updater.
+    Creating connection to the database.
 
     Registered all handlers (for commands)
 
     Returns:
         dispatcher and updater
     """
-    logging.info("Setting up bot")
-    bot.logOut()
-    logger.info("Logged out")
+    session = create_session()
+    logger.info(f"\n\tDB revision: {get_database_revision()}; \n\ttables: {get_tables()}")
+
+    logging.info("Setting up bot...")
+    # is_logged_out = bot.log_out()
+    # logger.info(f"Logged out: {is_logged_out}")
     updater = Updater(BOT_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
@@ -88,7 +104,7 @@ def test_server():
     Note:
         Don't use this for production.
     """
-    logging.info('Started server with polling')
+    logging.info('Starting server with polling')
     # Do NOT USE it in a production deployment.
     # for PRODUCTION use WEBHOOK
     _, updater = setup()

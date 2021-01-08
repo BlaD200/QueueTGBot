@@ -3,7 +3,10 @@ import logging
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
-from bot.constants import start_message_private, unknown_command, unimplemented_command, help_message, about_me_message
+from bot.constants import (
+    start_message_private, unknown_command,
+    unimplemented_command, help_message,
+    about_me_message)
 
 
 # Registering logger here
