@@ -1,12 +1,16 @@
+"""This module contains the functions that handle all commands supported by the bot."""
+
 import logging
 
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
 from bot.constants import (
-    start_message_private, unknown_command,
-    unimplemented_command, help_message,
-    about_me_message)
+    start_message_private, start_message_chat,
+    unknown_command, unimplemented_command,
+    help_message, help_message_in_chat,
+    about_me_message
+)
 
 
 # Registering logger here
@@ -16,6 +20,11 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 def start_command(update: Update, context: CallbackContext):
+    """
+    Handler for '/start' command.
+    Sends :const:`bot.constants.start_message_private` in private chats
+    and :const:`bot.constants.start_message_chat` in groups, public chats, ets.
+    """
     log_command(update, context, 'start')
 
     chat_type = update.message.chat.type
@@ -25,7 +34,8 @@ def start_command(update: Update, context: CallbackContext):
         )
     else:
         update.effective_message.reply_text(
-            text=f"Hello, [{update.message.from_user.full_name}](tg://user?id={update.message.from_user.id})!",
+            text=start_message_chat.format(fullname=update.message.from_user.full_name,
+                                           user_id=update.message.from_user.id),
             parse_mode=ParseMode.MARKDOWN_V2
         )
 
@@ -52,7 +62,10 @@ def show_queues_command(update: Update, context: CallbackContext):
 def help_command(update: Update, context: CallbackContext):
     """Hadler for '/help' command"""
     log_command(update, context, 'help')
-    update.effective_message.reply_text(help_message)
+    if update.effective_chat.type == 'private':
+        update.effective_message.reply_text(help_message)
+    else:
+        update.effective_message.reply_text(help_message_in_chat)
 
 
 def about_me_command(update: Update, context: CallbackContext):
@@ -85,3 +98,16 @@ def log_command(update: Update, context: CallbackContext, command_name: str):
         logging.info(f"{command_name}: [{info}] edited")
     else:
         logging.info(f"{command_name} [{info}]")
+
+
+__all__ = [
+    'start_command',
+    'create_queue_command',
+    'delete_queue_command',
+    'show_queues_command',
+    'help_command',
+    'about_me_command',
+    'unsupported_command_handler',
+    'unimplemented_command_handler'
+
+]

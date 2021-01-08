@@ -11,8 +11,7 @@ sys.path.append(os.getcwd())
 print(sys.path)
 print(os.getcwd())
 
-from sql import sqlalchemy_url
-from sql.domain.QueueEntity import Base
+from sql import sqlalchemy_url, Base
 
 
 if 'None' in sqlalchemy_url:

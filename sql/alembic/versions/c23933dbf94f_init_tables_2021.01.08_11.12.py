@@ -37,8 +37,8 @@ def upgrade():
                     sa.Column('user_order', sa.Integer(), nullable=False),
                     sa.Column('current_order', sa.Integer(), nullable=False),
                     sa.Column('queue_id', sa.Integer(), nullable=False),
-                    sa.ForeignKeyConstraint(('queue_id',), ['queue.queue_id'], ondelete='CASCADE'),
-                    sa.PrimaryKeyConstraint('user_id', 'queue_id')
+                    sa.PrimaryKeyConstraint('user_id', 'queue_id'),
+                    sa.ForeignKeyConstraint(('queue_id',), ['queue.queue_id'], ondelete='CASCADE')
                     )
     # ### end Alembic commands ###
 

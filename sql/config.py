@@ -1,3 +1,5 @@
+"""This module reads environment variables related to DB to python variables."""
+
 from os import getenv
 
 

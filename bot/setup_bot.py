@@ -1,8 +1,11 @@
+"""In this module defined setup function, that is needed to configure bot before startup."""
+
 import logging
 
-from telegram import Bot, User, Update
+from telegram import Bot, Update
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
 
+from bot.chat_status_handlers import new_chat_member_handler, left_chat_member_handler
 from bot.command_handlers import (
     start_command,
     create_queue_command,
@@ -14,7 +17,7 @@ from bot.command_handlers import (
     unsupported_command_handler
 )
 from bot.config import BOT_TOKEN
-from sql import create_session, get_tables, get_database_revision
+from sql import get_tables, get_database_revision
 
 
 # Registering logger here
@@ -35,12 +38,9 @@ def setup():
     Returns:
         dispatcher and updater
     """
-    session = create_session()
     logger.info(f"\n\tDB revision: {get_database_revision()}; \n\ttables: {get_tables()}")
 
     logging.info("Setting up bot...")
-    # is_logged_out = bot.log_out()
-    # logger.info(f"Logged out: {is_logged_out}")
     updater = Updater(BOT_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
@@ -71,27 +71,6 @@ def setup():
     return dispatcher, updater
 
 
-def new_chat_member_handler(update: Update, context: CallbackContext):
-    member: User
-    is_me = [member for member in update.effective_message.new_chat_members if member.id == context.bot.id]
-    logger.info(f"new member: "
-                f"\n\tis_me: {len(is_me) == 1}"
-                f"\n\t[chat_id: {update.effective_chat.id}; "
-                f"\n\tnew_chat_members: {[str(i) for i in update.effective_message.new_chat_members]}; "
-                f"\n\tfrom: {update.effective_message.from_user}]")
-    pass
-
-
-def left_chat_member_handler(update: Update, context: CallbackContext):
-    is_me = update.effective_message.left_chat_member.id == context.bot.id
-    logger.info(f"left member: "
-                f"\n\tis_me: {is_me}"
-                f"\n\t[chat_id: {update.effective_chat.id}; "
-                f"\n\tleft_chat_member: {update.effective_message.left_chat_member}; "
-                f"\n\tfrom: {update.effective_message.from_user}]")
-    pass
-
-
 def unexpected_message(update: Update, context: CallbackContext):
     logger.info(f"unexpected message: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
     pass
@@ -111,6 +90,11 @@ def test_server():
     updater.start_polling()
     updater.idle()
 
+
+__all__ = [
+    'setup',
+    'bot'
+]
 
 if __name__ == '__main__':
     test_server()

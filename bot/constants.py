@@ -1,3 +1,5 @@
+"""In this module defines all text constants used by the bot to create text replies."""
+
 start_message_private = """Hello, {fullname}!
 This bot helps you to create and manage queues in your group. Just add it to the group and type 
 /create_queue <queue name> 
@@ -6,6 +8,9 @@ command.
 To see the help type /help
 To the the detailed info about the bot type /about_me.
 """
+
+start_message_chat = "Hello, [{fullname}](tg://user?id={user_id})\! \n" \
+                     "I've already here and waiting for your commands\.😉"
 
 unknown_command = "Unknown command. \n" \
                   "To see the help type /help or type '/' to see the hints for commands, " \
@@ -25,6 +30,8 @@ command to notify a group member, whose turn came and move the queue further.
 
 You can also type '/' to see all available commands.
 """
+
+help_message_in_chat = 'TODO'
 
 about_me_message = """
 Having troubles with managing queues in your group? Want to make queues maximum honest and objective? Well, this is the decision!
