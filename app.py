@@ -34,18 +34,16 @@ def webhook():
     return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
 
-if __name__ == '__main__':
-    # Check, if bot correctly connect to Telegram API
-    info = bot.get_me()
-    logger.info(f'Bot info: {info}')
-    logger.info(bot.get_webhook_info())
+# if __name__ == '__main__':
+# Check, if bot correctly connect to Telegram API
+info = bot.get_me()
+logger.info(f'Bot info: {info}')
+logger.info(bot.get_webhook_info())
 
-    if bot.get_webhook_info()['url'] != WEBHOOK_URL:
-        urlopen(f'https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}')
+if bot.get_webhook_info()['url'] != WEBHOOK_URL:
+    urlopen(f'https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}')
 
-    logger.info(bot.get_webhook_info())
+logger.info(bot.get_webhook_info())
 
-    dispatcher, _ = setup()
-    logging.info('Started server with webhook')
-    # app.debug = True
-    app.run(threaded=True, port=5000)
+dispatcher, _ = setup()
+logging.info('Started server with webhook')
