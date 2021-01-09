@@ -26,7 +26,7 @@ class Queue(Base):
     members = relationship('QueueMembers')
 
     def __repr__(self):
-        return f"Queue(id={self.queue_id}, name='{self.name}', created_at={self.created_at}, notify={self.notify}"
+        return f"Queue(id={self.queue_id}, name='{self.name}', created_at={self.created_at}, notify={self.notify})"
 
 
 class QueueMembers(Base):

@@ -70,6 +70,35 @@ def create_queue_empty_name(lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
+def delete_queue_empty_name(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ('Queue name cannot be empty. '
+                'To delete the queue type \n'
+                '`/delete_queue@queues_manager_bot <name>`.')
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def delete_queue_not_exist(queue_name: str, lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = f"Sorry, but the queue with the given name *{queue_name}* doesn't exist."
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def deleted_queue_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "The queue was deleted."
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
 def about_me_message(lang: str = 'en'):
     text: str
     if lang == 'en':

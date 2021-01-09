@@ -73,8 +73,6 @@ def left_chat_member_handler(update: Update, context: CallbackContext):
         chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
         if chat is None:
             logger.warning("Expected the chat(id='') was in DB, but it wasn't found.")
-            session.rollback()
-            logger.warning("Session was rolled back.")
             return
         else:
             session.delete(chat)

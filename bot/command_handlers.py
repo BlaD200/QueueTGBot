@@ -12,7 +12,7 @@ from localization.replies import (
     create_queue_exist, create_queue_empty_name,
     help_message, help_message_in_chat,
     about_me_message,
-    unexpected_error
+    unexpected_error, delete_queue_empty_name, delete_queue_not_exist, deleted_queue_message
 )
 from sql import create_session
 from sql.domain import *
@@ -86,11 +86,13 @@ def create_queue_command(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     queue_name = ' '.join(context.args)
     if not queue_name:
+        logger.info("Creation a queue with empty name.")
         update.effective_chat.send_message(**create_queue_empty_name())
     else:
         session = create_session()
         count = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).count()
         if count == 1:
+            logger.info("Creating a queue with an existing name")
             update.effective_chat.send_message(
                 **create_queue_exist(queue_name=queue_name)
             )
@@ -107,7 +109,7 @@ def create_queue_command(update: Update, context: CallbackContext):
                     parse_mode=ParseMode.MARKDOWN
                 )
             except Exception as e:
-                logger.error(f"ERROR when creating queue: \n\t{queue}"
+                logger.error(f"ERROR when creating queue: \n\t{queue} "
                              f"with message: \n{e}")
                 update.effective_chat.send_message(**unexpected_error())
 
@@ -116,7 +118,23 @@ def create_queue_command(update: Update, context: CallbackContext):
 @group_only_command
 def delete_queue_command(update: Update, context: CallbackContext):
     """Handler for '/delete_queue <queue_name>' command"""
-    ...
+
+    chat_id = update.effective_chat.id
+    queue_name = ' '.join(context.args)
+    if not queue_name:
+        logger.info("Deletion a queue with empty name.")
+        update.effective_chat.send_message(**delete_queue_empty_name())
+    else:
+        session = create_session()
+        queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+        if queue is None:
+            logger.info("Deletion inexistent queue.")
+            update.effective_chat.send_message(**delete_queue_not_exist(queue_name=queue_name))
+        else:
+            session.delete(queue)
+            session.commit()
+            logger.info(f"Deleted queue: {queue}")
+            update.effective_chat.send_message(**deleted_queue_message())
 
 
 @log_command('show_queues')
