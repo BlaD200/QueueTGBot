@@ -19,6 +19,11 @@ unknown_command = "Unknown command. \n" \
 unimplemented_command = "This command haven't implemented yet.😔😔\n" \
                         "Type /about_me to contact the developer."
 
+create_queue_exist = "Sorry, but the queue with the given name '*{queue_name}*' already exists."
+create_queue_empty_name = 'Queue name cannot be empty. ' \
+                          'To create a new queue type \n' \
+                          '`/create_queue@queues_manager_bot <name>`.'
+
 help_message = """Add this bot to the group and type
 /create_queue <queue name> 
 command to create a queue. You can also type /notify_all command before creating any queue to notify group members when some queue was created. You can then add yourself to the created queue by typing
