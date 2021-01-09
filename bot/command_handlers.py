@@ -6,12 +6,13 @@ from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
 from bot.chat_type_accepted import group_only_command
-from bot.constants import (
+from localization.replies import (
     start_message_private, start_message_chat,
     unknown_command, unimplemented_command,
     create_queue_exist, create_queue_empty_name,
     help_message, help_message_in_chat,
-    about_me_message
+    about_me_message,
+    unexpected_error
 )
 from sql import create_session
 from sql.domain import *
@@ -26,7 +27,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 def log_command(command_name: str = None):
     """
     Designed to be a decorator.
-    Decorated function has to have two arguments:
+    Decorated function HAS TO have two arguments:
     :class:`telegram.Update` and :class:`telegram.CallbackContext`
     \n
     Logs a message with a command from a user with such information, as chat_type, chat_id, user_id and command args.
@@ -67,13 +68,12 @@ def start_command(update: Update, context: CallbackContext):
     chat_type = update.message.chat.type
     if chat_type == 'private':
         update.effective_message.reply_text(
-            text=start_message_private.format(fullname=update.message.from_user.full_name)
+            **start_message_private(fullname=update.message.from_user.full_name)
         )
     else:
         update.effective_message.reply_text(
-            text=start_message_chat.format(fullname=update.message.from_user.full_name,
-                                           user_id=update.message.from_user.id),
-            parse_mode=ParseMode.MARKDOWN_V2
+            **start_message_chat(fullname=update.message.from_user.full_name,
+                                 user_id=update.message.from_user.id)
         )
 
 
@@ -86,17 +86,13 @@ def create_queue_command(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     queue_name = ' '.join(context.args)
     if not queue_name:
-        update.effective_chat.send_message(
-            text=create_queue_empty_name,
-            parse_mode=ParseMode.MARKDOWN
-        )
+        update.effective_chat.send_message(**create_queue_empty_name())
     else:
         session = create_session()
         count = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).count()
         if count == 1:
             update.effective_chat.send_message(
-                text=create_queue_exist.format(queue_name=queue_name),
-                parse_mode=ParseMode.MARKDOWN
+                **create_queue_exist(queue_name=queue_name)
             )
         else:
             queue = Queue(name=queue_name, notify=True, chat_id=chat_id)
@@ -113,7 +109,7 @@ def create_queue_command(update: Update, context: CallbackContext):
             except Exception as e:
                 logger.error(f"ERROR when creating queue: \n\t{queue}"
                              f"with message: \n{e}")
-                update.effective_chat.send_message("Something went wrong...😢😢")
+                update.effective_chat.send_message(**unexpected_error())
 
 
 @log_command('delete_queue')
@@ -134,26 +130,26 @@ def show_queues_command(update: Update, context: CallbackContext):
 def help_command(update: Update, context: CallbackContext):
     """Handler for '/help' command"""
     if update.effective_chat.type == 'private':
-        update.effective_message.reply_text(help_message)
+        update.effective_message.reply_text(**help_message())
     else:
-        update.effective_message.reply_text(help_message_in_chat)
+        update.effective_message.reply_text(**help_message_in_chat())
 
 
 @log_command('about_me')
 def about_me_command(update: Update, context: CallbackContext):
     """Handler for '/info' command"""
-    update.effective_message.reply_text(about_me_message, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    update.effective_message.reply_text(**about_me_message())
 
 
 @log_command('unsupported_command')
 def unsupported_command_handler(update: Update, context: CallbackContext):
     """Handler for any command, which doesn't exist in the bot."""
-    update.effective_message.reply_text(unknown_command)
+    update.effective_message.reply_text(**unknown_command())
 
 
 @log_command()
 def unimplemented_command_handler(update: Update, context: CallbackContext):
-    update.message.reply_text(unimplemented_command)
+    update.message.reply_text(**unimplemented_command())
 
 
 __all__ = [
