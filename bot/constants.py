@@ -16,7 +16,7 @@ unknown_command = "Unknown command. \n" \
                   "To see the help type /help or type '/' to see the hints for commands, " \
                   "press tab and complete selected command by adding required arguments."" "
 
-unimplemented_command = "This command haven't implemented yet.😔😔\n" \
+unimplemented_command = "This command hasn't been implemented yet.😔😔\n" \
                         "Type /about_me to contact the developer."
 
 create_queue_private = "To start, add me to the group.)\n\n" \

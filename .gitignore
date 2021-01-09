@@ -302,3 +302,4 @@ pip-selfcheck.json
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm+iml,python,flask,virtualenv
 /sql/alembic/local_env.py
+/test/

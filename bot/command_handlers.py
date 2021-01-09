@@ -22,14 +22,47 @@ logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+def log_command(command_name: str = None):
+    """
+    Designed to be a decorator.
+    Decorated function has to have two arguments:
+    :class:`telegram.Update` and :class:`telegram.CallbackContext`
+    \n
+    Logs a message with a command from a user with such information, as chat_type, chat_id, user_id and command args.
+
+    Args:
+        command_name: name of the command to be logged. If not passed will be logged the first word in received message.
+    """
+
+    def decorator_maker(f):
+        def wrapped(update: Update, context: CallbackContext):
+            chat_id = update.effective_chat.id
+            chat_name = update.effective_chat.title
+            user_id = update.effective_user.id
+            chat_type = update.effective_chat.type
+            args = ' '.join(context.args) if context.args is not None else update.effective_message.text
+            info = f"chat_type: '{chat_type}', " \
+                   f"chat_id: '{chat_id}', chat_name: '{chat_name}', user: '{user_id}', args: '{args}'"
+            _command_name = command_name if command_name is not None else update.effective_message.text.split(' ')[0]
+            if update.edited_message:
+                logging.info(f"{_command_name}: [{info}] edited")
+            else:
+                logging.info(f"{_command_name} [{info}]")
+
+            return f(update, context)
+
+        return wrapped
+
+    return decorator_maker
+
+
+@log_command('start')
 def start_command(update: Update, context: CallbackContext):
     """
     Handler for '/start' command.
     Sends :const:`bot.constants.start_message_private` in private chats
     and :const:`bot.constants.start_message_chat` in groups, public chats, ets.
     """
-    log_command(update, context, 'start')
-
     chat_type = update.message.chat.type
     if chat_type == 'private':
         update.effective_message.reply_text(
@@ -43,9 +76,9 @@ def start_command(update: Update, context: CallbackContext):
         )
 
 
+@log_command('create_queue')
 def create_queue_command(update: Update, context: CallbackContext):
     """Handler for '/create_queue <queue_name>' command"""
-    log_command(update, context, 'create_queue')
     # notify all members
 
     if update.effective_chat.type == 'private':
@@ -85,59 +118,42 @@ def create_queue_command(update: Update, context: CallbackContext):
                 update.effective_chat.send_message("Something went wrong...😢😢")
 
 
+@log_command('delete_queue')
 def delete_queue_command(update: Update, context: CallbackContext):
     """Handler for '/delete_queue <queue_name>' command"""
-    log_command(update, context, 'delete_queue')
     ...
 
 
+@log_command('show_queues')
 def show_queues_command(update: Update, context: CallbackContext):
     """Handler for '/show_queues' command"""
-    log_command(update, context, 'show_queues')
     ...
 
 
+@log_command('help')
 def help_command(update: Update, context: CallbackContext):
     """Hadler for '/help' command"""
-    log_command(update, context, 'help')
     if update.effective_chat.type == 'private':
         update.effective_message.reply_text(help_message)
     else:
         update.effective_message.reply_text(help_message_in_chat)
 
 
+@log_command('about_me')
 def about_me_command(update: Update, context: CallbackContext):
     """Handler for '/info' command"""
-    log_command(update, context, 'info')
     update.effective_message.reply_text(about_me_message, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
 
+@log_command('unsupported_command')
 def unsupported_command_handler(update: Update, context: CallbackContext):
     """Handler for any command, which doesn't exist in the bot."""
-    log_command(update, context, 'unsupported command')
     update.effective_message.reply_text(unknown_command)
 
 
+@log_command()
 def unimplemented_command_handler(update: Update, context: CallbackContext):
-    log_command(update, context, update.effective_message.text.split(' ')[0])
     update.message.reply_text(unimplemented_command)
-
-
-def log_command(update: Update, context: CallbackContext, command_name: str):
-    """
-    Logs a message with a command from a user with such information, as chat_type, chat_id, user_id and command args.
-    """
-    chat_id = update.effective_chat.id
-    chat_name = update.effective_chat.title
-    user_id = update.effective_user.id
-    chat_type = update.effective_chat.type
-    args = ' '.join(context.args) if context.args is not None else update.effective_message.text
-    info = f"chat_type: '{chat_type}', " \
-           f"chat_id: '{chat_id}', chat_name: '{chat_name}', user: '{user_id}', args: '{args}'"
-    if update.edited_message:
-        logging.info(f"{command_name}: [{info}] edited")
-    else:
-        logging.info(f"{command_name} [{info}]")
 
 
 __all__ = [
@@ -149,5 +165,4 @@ __all__ = [
     'about_me_command',
     'unsupported_command_handler',
     'unimplemented_command_handler'
-
 ]
