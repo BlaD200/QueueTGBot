@@ -19,6 +19,8 @@ unknown_command = "Unknown command. \n" \
 unimplemented_command = "This command haven't implemented yet.😔😔\n" \
                         "Type /about_me to contact the developer."
 
+create_queue_private = "To start, add me to the group.)\n\n" \
+                       "Type /help for more information."
 create_queue_exist = "Sorry, but the queue with the given name '*{queue_name}*' already exists."
 create_queue_empty_name = 'Queue name cannot be empty. ' \
                           'To create a new queue type \n' \

@@ -8,7 +8,7 @@ from telegram.ext import CallbackContext
 from bot.constants import (
     start_message_private, start_message_chat,
     unknown_command, unimplemented_command,
-    create_queue_exist, create_queue_empty_name,
+    create_queue_private, create_queue_exist, create_queue_empty_name,
     help_message, help_message_in_chat,
     about_me_message
 )
@@ -47,8 +47,12 @@ def create_queue_command(update: Update, context: CallbackContext):
     """Handler for '/create_queue <queue_name>' command"""
     log_command(update, context, 'create_queue')
     # notify all members
-    chat_id = update.effective_chat.id
 
+    if update.effective_chat.type == 'private':
+        update.effective_message.reply_text(create_queue_private)
+        return
+
+    chat_id = update.effective_chat.id
     queue_name = ' '.join(context.args)
     if not queue_name:
         update.effective_chat.send_message(
