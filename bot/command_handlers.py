@@ -5,18 +5,19 @@ import logging
 from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
+from bot.chat_type_accepted import group_only_command
 from bot.constants import (
     start_message_private, start_message_chat,
     unknown_command, unimplemented_command,
-    create_queue_private, create_queue_exist, create_queue_empty_name,
+    create_queue_exist, create_queue_empty_name,
     help_message, help_message_in_chat,
     about_me_message
 )
-# Registering logger here
 from sql import create_session
 from sql.domain import *
 
 
+# Registering logger here
 logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
                     level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
@@ -60,8 +61,8 @@ def log_command(command_name: str = None):
 def start_command(update: Update, context: CallbackContext):
     """
     Handler for '/start' command.
-    Sends :const:`bot.constants.start_message_private` in private chats
-    and :const:`bot.constants.start_message_chat` in groups, public chats, ets.
+    Sends ``bot.constants.start_message_private`` in private chats
+    and ``bot.constants.start_message_chat`` in groups, public chats, ets.
     """
     chat_type = update.message.chat.type
     if chat_type == 'private':
@@ -77,13 +78,10 @@ def start_command(update: Update, context: CallbackContext):
 
 
 @log_command('create_queue')
+@group_only_command
 def create_queue_command(update: Update, context: CallbackContext):
     """Handler for '/create_queue <queue_name>' command"""
     # notify all members
-
-    if update.effective_chat.type == 'private':
-        update.effective_message.reply_text(create_queue_private)
-        return
 
     chat_id = update.effective_chat.id
     queue_name = ' '.join(context.args)
@@ -119,12 +117,14 @@ def create_queue_command(update: Update, context: CallbackContext):
 
 
 @log_command('delete_queue')
+@group_only_command
 def delete_queue_command(update: Update, context: CallbackContext):
     """Handler for '/delete_queue <queue_name>' command"""
     ...
 
 
 @log_command('show_queues')
+@group_only_command
 def show_queues_command(update: Update, context: CallbackContext):
     """Handler for '/show_queues' command"""
     ...
@@ -132,7 +132,7 @@ def show_queues_command(update: Update, context: CallbackContext):
 
 @log_command('help')
 def help_command(update: Update, context: CallbackContext):
-    """Hadler for '/help' command"""
+    """Handler for '/help' command"""
     if update.effective_chat.type == 'private':
         update.effective_message.reply_text(help_message)
     else:

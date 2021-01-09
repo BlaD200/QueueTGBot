@@ -8,19 +8,18 @@ command.
 To see the help type /help
 To the the detailed info about the bot type /about_me.
 """
-
 start_message_chat = "Hello, [{fullname}](tg://user?id={user_id})\! \n" \
                      "I've already here and waiting for your commands\.😉"
+
+private_unaccepted = "Add me to the group first.)\n\n" \
+                     "Type /help for more information."
 
 unknown_command = "Unknown command. \n" \
                   "To see the help type /help or type '/' to see the hints for commands, " \
                   "press tab and complete selected command by adding required arguments."" "
-
 unimplemented_command = "This command hasn't been implemented yet.😔😔\n" \
                         "Type /about_me to contact the developer."
 
-create_queue_private = "To start, add me to the group.)\n\n" \
-                       "Type /help for more information."
 create_queue_exist = "Sorry, but the queue with the given name '*{queue_name}*' already exists."
 create_queue_empty_name = 'Queue name cannot be empty. ' \
                           'To create a new queue type \n' \
