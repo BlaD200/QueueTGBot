@@ -12,7 +12,8 @@ from localization.replies import (
     create_queue_exist, create_queue_empty_name,
     help_message, help_message_in_chat,
     about_me_message,
-    unexpected_error, delete_queue_empty_name, delete_queue_not_exist, deleted_queue_message
+    unexpected_error, delete_queue_empty_name, delete_queue_not_exist, deleted_queue_message, show_queues_message_empty,
+    show_queues_message
 )
 from sql import create_session
 from sql.domain import *
@@ -141,7 +142,15 @@ def delete_queue_command(update: Update, context: CallbackContext):
 @group_only_command
 def show_queues_command(update: Update, context: CallbackContext):
     """Handler for '/show_queues' command"""
-    ...
+
+    chat_id = update.effective_chat.id
+    session = create_session()
+    queues = session.query(Queue).filter(Queue.chat_id == chat_id).all()
+    if not queues:
+        update.effective_chat.send_message(**show_queues_message_empty())
+    else:
+        queue_names = [queue.name for queue in queues]
+        update.effective_chat.send_message(**show_queues_message(queue_names))
 
 
 @log_command('help')

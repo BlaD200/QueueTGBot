@@ -11,6 +11,7 @@ Examples:
 See Also:
     :class:`telegram.bot.Bot`
 """
+from typing import List
 
 from telegram import ParseMode
 
@@ -63,7 +64,7 @@ def create_queue_empty_name(lang: str = 'en'):
     text: str
     if lang == 'en':
         text = ('Queue name cannot be empty. '
-                'To create a new queue type \n'
+                'To create a new queue, type \n'
                 '`/create_queue@queues_manager_bot <name>`.')
     else:
         text = "TODO"
@@ -74,7 +75,7 @@ def delete_queue_empty_name(lang: str = 'en'):
     text: str
     if lang == 'en':
         text = ('Queue name cannot be empty. '
-                'To delete the queue type \n'
+                'To delete the queue, type \n'
                 '`/delete_queue@queues_manager_bot <name>`.')
     else:
         text = "TODO"
@@ -97,6 +98,28 @@ def deleted_queue_message(lang: str = 'en'):
     else:
         text = "TODO"
     return {'text': text}
+
+
+def show_queues_message(queues: List[str], lang: str = 'en'):
+    queue_names_formatted = [f'• *{queue_name}*\n' for queue_name in queues]
+    text: str
+    if lang == 'en':
+        text = ("Queues:\n\n"
+                f"{''.join(queue_names_formatted)}")
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def show_queues_message_empty(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ("There no queues in this chat created yet.\n\n"
+                "To create a queue, type\n"
+                "`/create_queue@queues_manager_bot <name>`")
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
 def about_me_message(lang: str = 'en'):
