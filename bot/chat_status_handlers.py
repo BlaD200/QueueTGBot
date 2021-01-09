@@ -33,18 +33,19 @@ def new_chat_member_handler(update: Update, context: CallbackContext):
                 f"\n\tnew_chat_members: {[str(i) for i in update.effective_message.new_chat_members]}; "
                 f"\n\tfrom: {update.effective_message.from_user}]")
 
-    chat = Chat(chat_id=update.effective_chat.id, name=update.effective_chat.title)
-    logger.info(f"Joined to chat_id ({update.effective_chat.id})")
+    if is_me:
+        chat = Chat(chat_id=update.effective_chat.id, name=update.effective_chat.title)
+        logger.info(f"Joined to chat_id ({update.effective_chat.id})")
 
-    session = create_session()
-    try:
-        session.add(chat)
-        session.commit()
-        logger.info(f"Chat saved to DB ({chat.chat_id})")
-    except IntegrityError as e:
-        logger.error("ERROR while adding to DB:\n" + str(e))
-        session.rollback()
-        logger.warning("Session was rolled back.")
+        session = create_session()
+        try:
+            session.add(chat)
+            session.commit()
+            logger.info(f"Chat saved to DB ({chat.chat_id})")
+        except IntegrityError as e:
+            logger.error("ERROR while adding to DB:\n" + str(e) + '\n')
+            session.rollback()
+            logger.warning("Session was rolled back.")
 
 
 def left_chat_member_handler(update: Update, context: CallbackContext):
@@ -65,19 +66,20 @@ def left_chat_member_handler(update: Update, context: CallbackContext):
                 f"\n\tleft_chat_member: {update.effective_message.left_chat_member}; "
                 f"\n\tfrom: {update.effective_message.from_user}]")
 
-    logger.info(f"Removed from chat_id {chat_id}")
+    if is_me:
+        logger.info(f"Removed from chat_id {chat_id}")
 
-    session = create_session()
-    chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
-    if chat is None:
-        logger.warning("Expected the chat(id='') was in DB, but it wasn't found.")
-        session.rollback()
-        logger.warning("Session was rolled back.")
-        return
-    else:
-        session.delete(chat)
-        session.commit()
-        logger.info(f"Chat removed from DB ({chat.chat_id})")
+        session = create_session()
+        chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+        if chat is None:
+            logger.warning("Expected the chat(id='') was in DB, but it wasn't found.")
+            session.rollback()
+            logger.warning("Session was rolled back.")
+            return
+        else:
+            session.delete(chat)
+            session.commit()
+            logger.info(f"Chat removed from DB ({chat.chat_id})")
 
 
 __all__ = [
