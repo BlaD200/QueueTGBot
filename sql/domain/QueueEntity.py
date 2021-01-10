@@ -44,4 +44,4 @@ class QueueMember(Base):
 
     def __repr__(self) -> str:
         return f'QueueMember(queue_id={self.queue_id}, ' \
-               f'user_id={self.user_id}, user_order={self.user_order})'
+               f'user_id={self.user_id}, user_order={self.user_order}, fullname={self.fullname})'

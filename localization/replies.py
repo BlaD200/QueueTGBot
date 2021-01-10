@@ -166,6 +166,24 @@ def already_in_the_queue(lang: str = 'en'):
     return {'text': text}
 
 
+def not_in_the_queue_yet(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "You haven't been registered in this queue yet."
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
+def cannot_skip(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "You are alone or the last one in this queue, so, there no sense in the skip command..."
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
 def about_me_message(lang: str = 'en'):
     text: str
     if lang == 'en':

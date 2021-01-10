@@ -16,7 +16,8 @@ from localization.replies import (
     help_message, help_message_in_chat,
     about_me_message,
     unexpected_error, delete_queue_empty_name, queue_not_exist, deleted_queue_message, show_queues_message_empty,
-    show_queues_message, command_empty_queue_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message
+    show_queues_message, command_empty_queue_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message,
+    not_in_the_queue_yet, cannot_skip
 )
 from sql import create_session
 from sql.domain import *
@@ -159,7 +160,12 @@ def show_queues_command(update: Update, context: CallbackContext):
 
 def _edit_queue_members_message(queue: Queue, chat_id: int, bot):
     session = create_session()
-    members = session.query(QueueMember).filter(QueueMember.queue_id == queue.queue_id).all()
+    members = (session
+               .query(QueueMember)
+               .filter(QueueMember.queue_id == queue.queue_id)
+               .order_by(QueueMember.user_order)
+               .all()
+               )
     member_names = [member.fullname for member in members]
     bot.edit_message_text(
         chat_id=chat_id,
@@ -212,7 +218,8 @@ def remove_me_command(update: Update, context: CallbackContext):
     queue_name = ''.join(context.args)
     if not queue_name:
         logger.info('Removing fom queue with empty name')
-        update.effective_message.reply_text(command_empty_queue_name(command_name='remove_me'))
+        update.effective_message.reply_text(**command_empty_queue_name(command_name='remove_me'))
+        return
 
     chat_id = update.effective_chat.id
     session = create_session()
@@ -228,7 +235,7 @@ def remove_me_command(update: Update, context: CallbackContext):
                                .first())
         if member is None:
             logger.info('Not yet in the queue')
-            ...
+            update.effective_message.reply_text(**not_in_the_queue_yet())
         else:
             session.delete(member)
             # Updating user_order in queue_members table
@@ -247,6 +254,50 @@ def remove_me_command(update: Update, context: CallbackContext):
             logger.info(f'Updated user_order in queue({queue.queue_id}) for users(order>{member.user_order})')
 
             _edit_queue_members_message(queue, chat_id, context.bot)
+
+
+@log_command('skip_me')
+@group_only_command
+def skip_me_command(update: Update, context: CallbackContext):
+    queue_name = ''.join(context.args)
+    if not queue_name:
+        logger.info('Skipping with empty name')
+        update.effective_message.reply_text(**command_empty_queue_name('skip_me'))
+    else:
+        chat_id = update.effective_chat.id
+        session = create_session()
+        queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+        if queue is None:
+            logger.info('Skipping turn from the inexistent queue.')
+            update.effective_message.reply_text(**queue_not_exist(queue_name))
+        else:
+            member: QueueMember = (
+                session
+                    .query(QueueMember)
+                    .filter(QueueMember.queue_id == queue.queue_id,
+                            QueueMember.user_id == update.effective_user.id)
+                    .first())
+            if member is None:
+                logger.info('Not yet in the queue')
+                update.effective_message.reply_text(**not_in_the_queue_yet())
+            else:
+                next_member: QueueMember = (
+                    session
+                        .query(QueueMember)
+                        .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_order == member.user_order + 1)
+                        .first()
+                )
+                if next_member is not None:
+                    member.user_order = member.user_order + 1
+                    next_member.user_order = next_member.user_order - 1
+                    session.add_all([member, next_member])
+                    session.commit()
+                    logger.info(f'Skip queue_member({member.user_id}) in the queue({queue.queue_id})')
+
+                    _edit_queue_members_message(queue, chat_id, context.bot)
+                else:
+                    logging.info(f'Cancel skipping because of no other members in queue({queue.queue_id})')
+                    update.effective_message.reply_text(**cannot_skip())
 
 
 @log_command('help')
