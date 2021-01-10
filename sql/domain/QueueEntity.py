@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, TIMESTAMP, VARCHAR, BOOLEAN, ForeignKey
+from sqlalchemy import Column, Integer, TIMESTAMP, VARCHAR, BOOLEAN, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from sql import Base
@@ -13,7 +13,9 @@ class Queue(Base):
 
     queue_id = Column(Integer, nullable=False, unique=True, primary_key=True, autoincrement=True)
     name = Column(VARCHAR(255), nullable=False)
+    current_order = Column(Integer, nullable=False, default=0)
     notify = Column(BOOLEAN, nullable=False, default=True)
+    message_id_to_edit = Column(Integer)
 
     created_at = Column(TIMESTAMP, nullable=False, default=datetime.now())
 
@@ -23,21 +25,23 @@ class Queue(Base):
         back_populates='queue_ids',
         lazy=True
     )
-    members = relationship('QueueMembers')
+    members = relationship('QueueMember',
+                           cascade="all, delete, delete-orphan")
 
     def __repr__(self):
-        return f"Queue(id={self.queue_id}, name='{self.name}', created_at={self.created_at}, notify={self.notify})"
+        return f"Queue(id={self.queue_id}, name='{self.name}', current_order={self.current_order}, " \
+               f"created_at={self.created_at}, notify={self.notify}, message_id={self.message_id_to_edit})"
 
 
-class QueueMembers(Base):
-    __tablename__ = 'queue_members'
+class QueueMember(Base):
+    __tablename__ = 'queue_member'
 
     user_id = Column(Integer, nullable=False, primary_key=True)
     user_order = Column(Integer, nullable=False)
-    current_order = Column(Integer, nullable=False, default=0)
+    fullname = Column(String, nullable=False)
 
     queue_id = Column(Integer, ForeignKey('queue.queue_id', ondelete='CASCADE'), primary_key=True)
 
     def __repr__(self) -> str:
-        return f'QueueMembers(queue_id={self.queue_id}, ' \
-               f'user_id={self.user_id}, user_order={self.user_order}, current_order={self.current_order})'
+        return f'QueueMember(queue_id={self.queue_id}, ' \
+               f'user_id={self.user_id}, user_order={self.user_order})'

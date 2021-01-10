@@ -3,7 +3,7 @@
 from typing import List
 
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.orm import sessionmaker, Session, scoped_session
 
 from sql.config import *
@@ -12,7 +12,7 @@ from sql.config import *
 sqlalchemy_url = db_url if db_url is not None \
     else f'postgresql://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}'
 
-Base = declarative_base()
+Base: DeclarativeMeta = declarative_base()
 
 _engine = None
 _Session = None
@@ -78,7 +78,9 @@ def get_database_revision() -> str:
 __all__ = [
     'create_session',
     'get_tables',
-    'get_database_revision'
+    'get_database_revision',
+    'Base',
+    'sqlalchemy_url'
 ]
 
 # def update_last_index(db: MySQLConnection, table_name: str, column_name: str):

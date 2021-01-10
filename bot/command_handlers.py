@@ -2,7 +2,8 @@
 
 import logging
 
-from telegram import Update, ParseMode
+from telegram import Update
+from telegram.error import BadRequest
 from telegram.ext import CallbackContext
 
 from bot.chat_type_accepted import group_only_command
@@ -12,8 +13,8 @@ from localization.replies import (
     create_queue_exist, create_queue_empty_name,
     help_message, help_message_in_chat,
     about_me_message,
-    unexpected_error, delete_queue_empty_name, delete_queue_not_exist, deleted_queue_message, show_queues_message_empty,
-    show_queues_message
+    unexpected_error, delete_queue_empty_name, queue_not_exist, deleted_queue_message, show_queues_message_empty,
+    show_queues_message, add_me_empty_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message
 )
 from sql import create_session
 from sql.domain import *
@@ -82,7 +83,6 @@ def start_command(update: Update, context: CallbackContext):
 @group_only_command
 def create_queue_command(update: Update, context: CallbackContext):
     """Handler for '/create_queue <queue_name>' command"""
-    # notify all members
 
     chat_id = update.effective_chat.id
     queue_name = ' '.join(context.args)
@@ -100,15 +100,17 @@ def create_queue_command(update: Update, context: CallbackContext):
         else:
             queue = Queue(name=queue_name, notify=True, chat_id=chat_id)
             try:
+                message = update.effective_chat.send_message(**show_queue_members(queue_name))
+                queue.message_id_to_edit = message.message_id
+
                 session.add(queue)
                 session.commit()
                 logger.info(f"New queue created: \n\t{queue}")
 
-                update.effective_chat.send_message(
-                    text=f"*{queue_name}*\n\n"
-                         "Members:\n",
-                    parse_mode=ParseMode.MARKDOWN
-                )
+                try:
+                    message.pin(disable_notification=False)
+                except BadRequest:
+                    update.effective_chat.send_message(**no_rights_to_pin_message())
             except Exception as e:
                 logger.error(f"ERROR when creating queue: \n\t{queue} "
                              f"with message: \n{e}")
@@ -130,11 +132,11 @@ def delete_queue_command(update: Update, context: CallbackContext):
         queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
         if queue is None:
             logger.info("Deletion inexistent queue.")
-            update.effective_chat.send_message(**delete_queue_not_exist(queue_name=queue_name))
+            update.effective_chat.send_message(**queue_not_exist(queue_name=queue_name))
         else:
             session.delete(queue)
             session.commit()
-            logger.info(f"Deleted queue: {queue}")
+            logger.info(f"Deleted queue: \n\t{queue}")
             update.effective_chat.send_message(**deleted_queue_message())
 
 
@@ -151,6 +153,50 @@ def show_queues_command(update: Update, context: CallbackContext):
     else:
         queue_names = [queue.name for queue in queues]
         update.effective_chat.send_message(**show_queues_message(queue_names))
+
+
+@log_command('add_me')
+@group_only_command
+def add_me_command(update: Update, context: CallbackContext):
+    queue_name = ' '.join(context.args)
+    if not queue_name:
+        logger.info('Adding to queue with empty name')
+        update.effective_chat.send_message(**add_me_empty_name())
+        return
+
+    chat_id = update.effective_chat.id
+    session = create_session()
+    queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+    if queue is None:
+        logger.info('Adding to inexistent queue.')
+        update.effective_message.reply_text(**queue_not_exist(queue_name=queue_name))
+    else:
+        user_id = update.effective_user.id
+        member = (session
+                  .query(QueueMember)
+                  .filter(QueueMember.queue_id == queue.queue_id,
+                          QueueMember.user_id == user_id).first())
+        if member is not None:
+            logger.info("Already in the queue.")
+            update.effective_message.reply_text(**already_in_the_queue())
+            return
+
+        order = queue.current_order + 1
+        queue.current_order = order
+        member = QueueMember(user_id=user_id, fullname=update.effective_user.full_name,
+                             user_order=queue.current_order, queue_id=queue.queue_id)
+        session.add_all([member, queue])
+        session.commit()
+        logger.info(f"Added member to queue: \n\t{member}")
+
+        members = session.query(QueueMember).filter(QueueMember.queue_id == queue.queue_id).all()
+        member_names = [member.fullname for member in members]
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=queue.message_id_to_edit,
+            **show_queue_members(queue_name, member_names)
+        )
+        logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
 
 
 @log_command('help')

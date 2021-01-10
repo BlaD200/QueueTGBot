@@ -8,10 +8,12 @@ from sqlalchemy import pool
 
 
 sys.path.append(os.getcwd())
-print(sys.path)
 print(os.getcwd())
 
 from sql import sqlalchemy_url, Base
+# DO NOT DELETE THIS LINE as it is needed for alembic to see all table models.
+# noinspection PyUnresolvedReferences
+from sql.domain import *
 
 
 if 'None' in sqlalchemy_url:

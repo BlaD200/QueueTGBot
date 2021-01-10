@@ -65,10 +65,20 @@ def create_queue_empty_name(lang: str = 'en'):
     if lang == 'en':
         text = ('Queue name cannot be empty. '
                 'To create a new queue, type \n'
-                '`/create_queue@queues_manager_bot <name>`.')
+                '`/create_queue <name>`.')
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def no_rights_to_pin_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "I have no rights to pin this message.😢😒\n" \
+               "Give me this permission or ask your admin to pin manually."
+    else:
+        text = "TODO"
+    return {'text': text}
 
 
 def delete_queue_empty_name(lang: str = 'en'):
@@ -76,13 +86,13 @@ def delete_queue_empty_name(lang: str = 'en'):
     if lang == 'en':
         text = ('Queue name cannot be empty. '
                 'To delete the queue, type \n'
-                '`/delete_queue@queues_manager_bot <name>`.')
+                '`/delete_queue <name>`.')
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
-def delete_queue_not_exist(queue_name: str, lang: str = 'en'):
+def queue_not_exist(queue_name: str, lang: str = 'en'):
     text: str
     if lang == 'en':
         text = f"Sorry, but the queue with the given name *{queue_name}* doesn't exist."
@@ -101,11 +111,26 @@ def deleted_queue_message(lang: str = 'en'):
 
 
 def show_queues_message(queues: List[str], lang: str = 'en'):
-    queue_names_formatted = [f'• *{queue_name}*\n' for queue_name in queues]
+    queue_names_formatted_list = [f'• *{queue_name}*\n' for queue_name in queues]
     text: str
     if lang == 'en':
-        text = ("Queues:\n\n"
-                f"{''.join(queue_names_formatted)}")
+        text = ("Active Queues:\n\n"
+                f"{''.join(queue_names_formatted_list)}")
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def show_queue_members(queue_name: str, members: List[str] = None, lang: str = 'en'):
+    if members is None:
+        queue_members_formatted = 'No members here yet.'
+    else:
+        queue_members_formatted = "Members:\n" + (
+            ''.join([f'{i}. {member_name}' for i, member_name in enumerate(members)]))
+    text: str
+    if lang == 'en':
+        text = (f"*{queue_name}*\n\n"
+                f"{queue_members_formatted}")
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
@@ -116,10 +141,29 @@ def show_queues_message_empty(lang: str = 'en'):
     if lang == 'en':
         text = ("There no queues in this chat created yet.\n\n"
                 "To create a queue, type\n"
-                "`/create_queue@queues_manager_bot <name>`")
+                "`/create_queue <name>`")
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def add_me_empty_name(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ("Usage:\n"
+                "`/add_me <name>`")
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def already_in_the_queue(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "You are already in this queue."
+    else:
+        text = "TODO"
+    return {'text': text}
 
 
 def about_me_message(lang: str = 'en'):
