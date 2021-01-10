@@ -184,6 +184,25 @@ def cannot_skip(lang: str = 'en'):
     return {'text': text}
 
 
+def next_reached_queue_end(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "The queue has reached the end."
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
+def next_member_notify(fullname: str, user_id: int, queue_name: str, lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = f"[{fullname.capitalize()}](tg://user?id={user_id}), " \
+               f"your turn has come in the queue *{queue_name}*\!"
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
+
+
 def about_me_message(lang: str = 'en'):
     text: str
     if lang == 'en':
