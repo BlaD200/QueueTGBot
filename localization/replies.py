@@ -126,7 +126,7 @@ def show_queue_members(queue_name: str, members: List[str] = None, lang: str = '
         queue_members_formatted = 'No members here yet.'
     else:
         queue_members_formatted = "Members:\n" + (
-            ''.join([f'{i}. {member_name}' for i, member_name in enumerate(members)]))
+            ''.join([f'{i}. {member_name}\n' for i, member_name in enumerate(members)]))
     text: str
     if lang == 'en':
         text = (f"*{queue_name}*\n\n"
@@ -147,11 +147,11 @@ def show_queues_message_empty(lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
-def add_me_empty_name(lang: str = 'en'):
+def command_empty_queue_name(command_name: str, lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = ("Usage:\n"
-                "`/add_me <name>`")
+        text = ("You must specify a queue name.\n"
+                f"Usage: `/{command_name} <name>`")
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}

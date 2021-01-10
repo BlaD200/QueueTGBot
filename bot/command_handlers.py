@@ -2,6 +2,8 @@
 
 import logging
 
+from sqlalchemy import text
+from sqlalchemy.sql.elements import TextClause
 from telegram import Update
 from telegram.error import BadRequest
 from telegram.ext import CallbackContext
@@ -14,7 +16,7 @@ from localization.replies import (
     help_message, help_message_in_chat,
     about_me_message,
     unexpected_error, delete_queue_empty_name, queue_not_exist, deleted_queue_message, show_queues_message_empty,
-    show_queues_message, add_me_empty_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message
+    show_queues_message, command_empty_queue_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message
 )
 from sql import create_session
 from sql.domain import *
@@ -155,13 +157,25 @@ def show_queues_command(update: Update, context: CallbackContext):
         update.effective_chat.send_message(**show_queues_message(queue_names))
 
 
+def _edit_queue_members_message(queue: Queue, chat_id: int, bot):
+    session = create_session()
+    members = session.query(QueueMember).filter(QueueMember.queue_id == queue.queue_id).all()
+    member_names = [member.fullname for member in members]
+    bot.edit_message_text(
+        chat_id=chat_id,
+        message_id=queue.message_id_to_edit,
+        **show_queue_members(queue.name, member_names)
+    )
+    logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
+
+
 @log_command('add_me')
 @group_only_command
 def add_me_command(update: Update, context: CallbackContext):
     queue_name = ' '.join(context.args)
     if not queue_name:
         logger.info('Adding to queue with empty name')
-        update.effective_chat.send_message(**add_me_empty_name())
+        update.effective_chat.send_message(**command_empty_queue_name(command_name='add_me'))
         return
 
     chat_id = update.effective_chat.id
@@ -189,14 +203,50 @@ def add_me_command(update: Update, context: CallbackContext):
         session.commit()
         logger.info(f"Added member to queue: \n\t{member}")
 
-        members = session.query(QueueMember).filter(QueueMember.queue_id == queue.queue_id).all()
-        member_names = [member.fullname for member in members]
-        context.bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=queue.message_id_to_edit,
-            **show_queue_members(queue_name, member_names)
-        )
-        logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
+        _edit_queue_members_message(queue, chat_id, context.bot)
+
+
+@log_command('remove_me')
+@group_only_command
+def remove_me_command(update: Update, context: CallbackContext):
+    queue_name = ''.join(context.args)
+    if not queue_name:
+        logger.info('Removing fom queue with empty name')
+        update.effective_message.reply_text(command_empty_queue_name(command_name='remove_me'))
+
+    chat_id = update.effective_chat.id
+    session = create_session()
+    queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+    if queue is None:
+        logger.info('Removing from inexistent queue')
+        update.effective_message.reply_text(**queue_not_exist(queue_name))
+    else:
+        user_id = update.effective_user.id
+        member: QueueMember = (session
+                               .query(QueueMember)
+                               .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_id == user_id)
+                               .first())
+        if member is None:
+            logger.info('Not yet in the queue')
+            ...
+        else:
+            session.delete(member)
+            # Updating user_order in queue_members table
+            # to move down all users with user_order greater than the value of deleted user
+            update_stmt: TextClause = text('UPDATE queue_member '
+                                           'SET user_order = user_order - 1 '
+                                           'WHERE user_order > :deleted_user_order;')
+            session.execute(update_stmt, {'deleted_user_order': member.user_order})
+            # Updating current order in queue
+            queue.current_order = queue.current_order - 1
+            session.add(queue)
+
+            session.commit()
+
+            logger.info(f'User removed from queue (queue_id={queue.queue_id})')
+            logger.info(f'Updated user_order in queue({queue.queue_id}) for users(order>{member.user_order})')
+
+            _edit_queue_members_message(queue, chat_id, context.bot)
 
 
 @log_command('help')

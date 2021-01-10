@@ -14,7 +14,7 @@ from bot.command_handlers import (
     help_command,
     about_me_command,
     unimplemented_command_handler,
-    unsupported_command_handler, add_me_command
+    unsupported_command_handler, add_me_command, remove_me_command
 )
 from bot.config import BOT_TOKEN
 from sql import get_tables, get_database_revision
@@ -53,7 +53,7 @@ def setup():
     dispatcher.add_handler(CommandHandler('notify_all', unimplemented_command_handler))
 
     dispatcher.add_handler(CommandHandler('add_me', add_me_command))
-    dispatcher.add_handler(CommandHandler('remove_me', unimplemented_command_handler))
+    dispatcher.add_handler(CommandHandler('remove_me', remove_me_command))
     dispatcher.add_handler(CommandHandler('skip_me', unimplemented_command_handler))
     dispatcher.add_handler(CommandHandler('next', unimplemented_command_handler))
     dispatcher.add_handler(CommandHandler('show_members', unimplemented_command_handler))
