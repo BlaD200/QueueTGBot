@@ -37,6 +37,9 @@ def create_session() -> Session:
 
     if _session is None:
         _session = _Session()
+    else:
+        _session.close()
+        _session = _Session()
     return _session
 
 
