@@ -45,3 +45,9 @@ class QueueMember(Base):
     def __repr__(self) -> str:
         return f'QueueMember(queue_id={self.queue_id}, ' \
                f'user_id={self.user_id}, user_order={self.user_order}, fullname={self.fullname})'
+
+    def __eq__(self, other):
+        if type(other) is QueueMember:
+            return self.queue_id == other.queue_id and self.user_id == other.user_id
+        else:
+            return False

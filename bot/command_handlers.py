@@ -171,7 +171,7 @@ def _edit_queue_members_message(queue: Queue, chat_id: int, bot):
     bot.edit_message_text(
         chat_id=chat_id,
         message_id=queue.message_id_to_edit,
-        **show_queue_members(queue.name, member_names)
+        **show_queue_members(queue.name, member_names, queue.current_order)
     )
     logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
 
@@ -279,7 +279,7 @@ def add_me_command(update: Update, context: CallbackContext, queue: Queue):
         user_order = last_member.user_order + 1
     member = QueueMember(user_id=user_id, fullname=update.effective_user.full_name,
                          user_order=user_order, queue_id=queue.queue_id)
-    session.add_all([member, queue])
+    session.add(member)
     session.commit()
     logger.info(f"Added member to queue: \n\t{member}")
 
@@ -306,6 +306,19 @@ def remove_me_command(update: Update, context: CallbackContext, queue):
         logger.info('Not yet in the queue')
         update.effective_message.reply_text(**not_in_the_queue_yet())
     else:
+        # If it was the last member return turn to the previous one
+        last_member: QueueMember = (
+            session
+                .query(QueueMember)
+                .filter(QueueMember.queue_id == queue.queue_id)
+                .order_by(QueueMember.user_order.desc())
+                .first()
+        )
+        if queue.current_order == last_member.user_order:
+            queue.current_order = queue.current_order - 1
+            session.add(queue)
+            logger.info(f'Updated current_order in queue: \n\t{queue}')
+
         session.delete(member)
         # Updating user_order in queue_members table
         # to move down all users with user_order greater than the value of deleted user
@@ -390,6 +403,8 @@ def next_command(update: Update, context: CallbackContext, queue):
         session.add(queue)
         session.commit()
         logger.info(f'Updated current_order: \n\t{queue}')
+
+        _edit_queue_members_message(queue, update.effective_chat.id, context.bot)
 
 
 @log_command('help')
