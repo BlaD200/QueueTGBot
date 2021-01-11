@@ -1,6 +1,7 @@
 """This module contains the functions that handle all commands supported by the bot."""
 
 import logging
+from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.sql.elements import TextClause
@@ -17,7 +18,7 @@ from localization.replies import (
     about_me_message,
     unexpected_error, delete_queue_empty_name, queue_not_exist, deleted_queue_message, show_queues_message_empty,
     show_queues_message, command_empty_queue_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message,
-    not_in_the_queue_yet, cannot_skip, next_reached_queue_end, next_member_notify
+    not_in_the_queue_yet, cannot_skip, next_reached_queue_end, next_member_notify, reply_to_wrong_message_message
 )
 from sql import create_session
 from sql.domain import *
@@ -175,172 +176,220 @@ def _edit_queue_members_message(queue: Queue, chat_id: int, bot):
     logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
 
 
+def insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_no_queue_reply: dict):
+    """
+    Decorator function.
+
+    Tries to get the queue based on the replied message, if any,
+    or using the name specified in the command args.
+
+    * If the user replied to the message not generated for the queue
+    (stored as ``message_id_to_edit`` in the :class:`Queue` class),
+    the bot will reply with ``reply_to_wrong_message_message``.
+
+    * If the user specified nonexistent name in command args,
+    the bot will reply with ``queue_not_exist``
+
+    * If the user didn't reply to the message, generated for the queue,
+    and didn't specify the queue name in the command arguments,
+    the bot will reply with ``on_no_queue_reply``
+
+    Otherwise, the decorated function will be called with
+    (:class:`telegram.Update`, :class:`telegram.CallbackContext`, :class:`Queue`) parameters.
+
+    :param on_no_queue_log: given message will be logged, if the <b>third</b> condition is met
+    :param on_not_exist_log: given message will be logged, if the <b>second</b> condition is met
+    :param on_no_queue_reply: if the third condition is met, the bot will reply with this message.
+    Have to be in the format, used in ``replies`` module.
+
+    See Also:
+        bot.localization.replies
+    """
+
+    def decorator_maker(command_handler_function):
+        def wrapper(update: Update, context: CallbackContext):
+            chat_id = update.effective_chat.id
+            queue: Optional[Queue] = None
+
+            session = create_session()
+            # Trying to get the queue from message_id, that user replied to.
+            if update.effective_message.reply_to_message:
+                replied_message_id = update.effective_message.reply_to_message.message_id
+                queue = (session
+                         .query(Queue)
+                         .filter(Queue.chat_id == chat_id, Queue.message_id_to_edit == replied_message_id)
+                         .first())
+                # User replied to the wrong message (not with members) or to deleted queue.
+                if not queue:
+                    logger.info('Replied to wrong message or to the deleted queue.')
+                    update.effective_message.reply_text(**reply_to_wrong_message_message())
+
+            # User didn't reply to the message or replied to the wrong message.
+            # Checks if there name specified in command arguments.
+            queue_name = ' '.join(context.args)
+            if context.args and not queue:
+                queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+
+            if queue:
+                return command_handler_function(update, context, queue)
+            # The name was specified but queue with this name wasn't found in DB
+            elif not queue and context.args:
+                logger.info(on_not_exist_log)
+                update.effective_message.reply_text(**queue_not_exist(queue_name=queue_name))
+            else:
+                logger.info(on_no_queue_log)
+                update.effective_message.reply_text(**on_no_queue_reply)
+
+        return wrapper
+
+    return decorator_maker
+
+
 @log_command('add_me')
 @group_only_command
-def add_me_command(update: Update, context: CallbackContext):
-    queue_name = ' '.join(context.args)
-    if not queue_name:
-        logger.info('Adding to queue with empty name')
-        update.effective_chat.send_message(**command_empty_queue_name(command_name='add_me'))
+@insert_queue_from_context(
+    on_no_queue_log='Adding to queue with empty name',
+    on_not_exist_log='Adding to nonexistent queue.',
+    on_no_queue_reply=command_empty_queue_name(command_name='add_me')
+)
+def add_me_command(update: Update, context: CallbackContext, queue: Queue):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+
+    session = create_session()
+    member = (session
+              .query(QueueMember)
+              .filter(QueueMember.queue_id == queue.queue_id,
+                      QueueMember.user_id == user_id).first())
+    if member is not None:
+        logger.info("Already in the queue.")
+        update.effective_message.reply_text(**already_in_the_queue())
         return
 
-    chat_id = update.effective_chat.id
-    session = create_session()
-    queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
-    if queue is None:
-        logger.info('Adding to nonexistent queue.')
-        update.effective_message.reply_text(**queue_not_exist(queue_name=queue_name))
+    last_member: QueueMember = (
+        session
+            .query(QueueMember)
+            .filter(QueueMember.queue_id == queue.queue_id)
+            .order_by(QueueMember.user_order.desc())
+            .first()
+    )
+    if last_member is None:
+        user_order = 1
     else:
-        user_id = update.effective_user.id
-        member = (session
-                  .query(QueueMember)
-                  .filter(QueueMember.queue_id == queue.queue_id,
-                          QueueMember.user_id == user_id).first())
-        if member is not None:
-            logger.info("Already in the queue.")
-            update.effective_message.reply_text(**already_in_the_queue())
-            return
+        user_order = last_member.user_order + 1
+    member = QueueMember(user_id=user_id, fullname=update.effective_user.full_name,
+                         user_order=user_order, queue_id=queue.queue_id)
+    session.add_all([member, queue])
+    session.commit()
+    logger.info(f"Added member to queue: \n\t{member}")
 
-        last_member: QueueMember = (
-            session
-                .query(QueueMember)
-                .filter(QueueMember.queue_id == queue.queue_id)
-                .order_by(QueueMember.user_order.desc())
-                .first()
-        )
-        if last_member is None:
-            user_order = 1
-        else:
-            user_order = last_member.user_order + 1
-        member = QueueMember(user_id=user_id, fullname=update.effective_user.full_name,
-                             user_order=user_order, queue_id=queue.queue_id)
-        session.add_all([member, queue])
-        session.commit()
-        logger.info(f"Added member to queue: \n\t{member}")
-
-        _edit_queue_members_message(queue, chat_id, context.bot)
+    _edit_queue_members_message(queue, chat_id, context.bot)
 
 
 @log_command('remove_me')
 @group_only_command
-def remove_me_command(update: Update, context: CallbackContext):
-    queue_name = ''.join(context.args)
-    if not queue_name:
-        logger.info('Removing from queue with empty name')
-        update.effective_message.reply_text(**command_empty_queue_name(command_name='remove_me'))
-        return
-
+@insert_queue_from_context(
+    on_no_queue_log='Removing from queue with empty name',
+    on_not_exist_log='Removing from nonexistent queue',
+    on_no_queue_reply=command_empty_queue_name(command_name='remove_me')
+)
+def remove_me_command(update: Update, context: CallbackContext, queue):
     chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+
     session = create_session()
-    queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
-    if queue is None:
-        logger.info('Removing from nonexistent queue')
-        update.effective_message.reply_text(**queue_not_exist(queue_name))
+    member: QueueMember = (session
+                           .query(QueueMember)
+                           .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_id == user_id)
+                           .first())
+    if member is None:
+        logger.info('Not yet in the queue')
+        update.effective_message.reply_text(**not_in_the_queue_yet())
     else:
-        user_id = update.effective_user.id
-        member: QueueMember = (session
-                               .query(QueueMember)
-                               .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_id == user_id)
-                               .first())
-        if member is None:
-            logger.info('Not yet in the queue')
-            update.effective_message.reply_text(**not_in_the_queue_yet())
-        else:
-            session.delete(member)
-            # Updating user_order in queue_members table
-            # to move down all users with user_order greater than the value of deleted user
-            update_stmt: TextClause = text('UPDATE queue_member '
-                                           'SET user_order = user_order - 1 '
-                                           'WHERE user_order > :deleted_user_order;')
-            session.execute(update_stmt, {'deleted_user_order': member.user_order})
+        session.delete(member)
+        # Updating user_order in queue_members table
+        # to move down all users with user_order greater than the value of deleted user
+        update_stmt: TextClause = text('UPDATE queue_member '
+                                       'SET user_order = user_order - 1 '
+                                       'WHERE user_order > :deleted_user_order;')
+        session.execute(update_stmt, {'deleted_user_order': member.user_order})
 
-            session.commit()
+        session.commit()
 
-            logger.info(f'User removed from queue (queue_id={queue.queue_id})')
-            logger.info(f'Updated user_order in queue({queue.queue_id}) for users(order>{member.user_order})')
+        logger.info(f'User removed from queue (queue_id={queue.queue_id})')
+        logger.info(f'Updated user_order in queue({queue.queue_id}) for users(order>{member.user_order})')
 
-            _edit_queue_members_message(queue, chat_id, context.bot)
+        _edit_queue_members_message(queue, chat_id, context.bot)
 
 
 @log_command('skip_me')
 @group_only_command
-def skip_me_command(update: Update, context: CallbackContext):
-    queue_name = ''.join(context.args)
-    if not queue_name:
-        logger.info('Skipping with empty name')
-        update.effective_message.reply_text(**command_empty_queue_name('skip_me'))
-    else:
-        chat_id = update.effective_chat.id
-        session = create_session()
-        queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
-        if queue is None:
-            logger.info('Skipping turn from the nonexistent queue.')
-            update.effective_message.reply_text(**queue_not_exist(queue_name))
-        else:
-            member: QueueMember = (
-                session
-                    .query(QueueMember)
-                    .filter(QueueMember.queue_id == queue.queue_id,
-                            QueueMember.user_id == update.effective_user.id)
-                    .first())
-            if member is None:
-                logger.info('Not yet in the queue')
-                update.effective_message.reply_text(**not_in_the_queue_yet())
-            else:
-                next_member: QueueMember = (
-                    session
-                        .query(QueueMember)
-                        .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_order == member.user_order + 1)
-                        .first()
-                )
-                if next_member is not None:
-                    member.user_order = member.user_order + 1
-                    next_member.user_order = next_member.user_order - 1
-                    session.add_all([member, next_member])
-                    session.commit()
-                    logger.info(f'Skip queue_member({member.user_id}) in the queue({queue.queue_id})')
+@insert_queue_from_context(
+    on_no_queue_log='Skipping with empty name',
+    on_not_exist_log='Skipping turn from the nonexistent queue.',
+    on_no_queue_reply=command_empty_queue_name('skip_me')
+)
+def skip_me_command(update: Update, context: CallbackContext, queue):
+    chat_id = update.effective_chat.id
+    session = create_session()
 
-                    _edit_queue_members_message(queue, chat_id, context.bot)
-                else:
-                    logging.info(f'Cancel skipping because of no other members in queue({queue.queue_id})')
-                    update.effective_message.reply_text(**cannot_skip())
+    member: QueueMember = (
+        session
+            .query(QueueMember)
+            .filter(QueueMember.queue_id == queue.queue_id,
+                    QueueMember.user_id == update.effective_user.id)
+            .first())
+    if member is None:
+        logger.info('Not yet in the queue')
+        update.effective_message.reply_text(**not_in_the_queue_yet())
+    else:
+        next_member: QueueMember = (
+            session
+                .query(QueueMember)
+                .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_order == member.user_order + 1)
+                .first()
+        )
+        if next_member is not None:
+            member.user_order = member.user_order + 1
+            next_member.user_order = next_member.user_order - 1
+            session.add_all([member, next_member])
+            session.commit()
+            logger.info(f'Skip queue_member({member.user_id}) in the queue({queue.queue_id})')
+
+            _edit_queue_members_message(queue, chat_id, context.bot)
+        else:
+            logging.info(f'Cancel skipping because of no other members in queue({queue.queue_id})')
+            update.effective_message.reply_text(**cannot_skip())
 
 
 @log_command('next')
 @group_only_command
-def next_command(update: Update, context: CallbackContext):
-    queue_name = ''.join(context.args)
-    if not queue_name:
-        logger.info('Requested "next" with the empty queue name.')
-        update.effective_message.reply_text(**command_empty_queue_name('next'))
-        return
+@insert_queue_from_context(
+    on_no_queue_log='Requested "next" with the empty queue name.',
+    on_not_exist_log='Requested "next" with an nonexistent queue name.',
+    on_no_queue_reply=command_empty_queue_name('next')
+)
+def next_command(update: Update, context: CallbackContext, queue):
+    order = queue.current_order + 1
+    queue.current_order = order
 
-    chat_id = update.effective_chat.id
     session = create_session()
-    queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
-    if queue is None:
-        logger.info('Requested "next" with an nonexistent queue name.')
-        update.effective_message.reply_text(**queue_not_exist(queue_name))
+    member: QueueMember = (
+        session
+            .query(QueueMember)
+            .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_order == queue.current_order)
+            .first()
+    )
+    if member is None:
+        logger.info(f"Reached the end of the queue({queue.queue_id})")
+        update.effective_chat.send_message(**next_reached_queue_end())
     else:
-        order = queue.current_order + 1
-        queue.current_order = order
+        logging.info(f'Next member: {member}')
+        update.effective_chat.send_message(**next_member_notify(member.fullname, member.user_id, queue.name))
 
-        member: QueueMember = (
-            session
-                .query(QueueMember)
-                .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_order == queue.current_order)
-                .first()
-        )
-        if member is None:
-            logger.info(f"Reached the end of the queue({queue.queue_id})")
-            update.effective_chat.send_message(**next_reached_queue_end())
-        else:
-            logging.info(f'Next member: {member}')
-            update.effective_chat.send_message(**next_member_notify(member.fullname, member.user_id, queue_name))
-
-            session.add(queue)
-            session.commit()
-            logger.info(f'Updated current_order: \n\t{queue}')
+        session.add(queue)
+        session.commit()
+        logger.info(f'Updated current_order: \n\t{queue}')
 
 
 @log_command('help')

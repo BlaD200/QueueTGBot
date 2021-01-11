@@ -150,7 +150,7 @@ def show_queues_message_empty(lang: str = 'en'):
 def command_empty_queue_name(command_name: str, lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = ("You must specify a queue name.\n"
+        text = ("You must specify a queue name or reply to the message with the queue.\n"
                 f"Usage: `/{command_name} <name>`")
     else:
         text = "TODO"
@@ -201,6 +201,16 @@ def next_member_notify(fullname: str, user_id: int, queue_name: str, lang: str =
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
+
+
+def reply_to_wrong_message_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = 'You must reply to the message, contains queue members, to make the command works without arguments.\n' \
+               '_Note_: the queue must be active (not deleted).'
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
 def about_me_message(lang: str = 'en'):
