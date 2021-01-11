@@ -18,7 +18,8 @@ from localization.replies import (
     about_me_message,
     unexpected_error, delete_queue_empty_name, queue_not_exist, deleted_queue_message, show_queues_message_empty,
     show_queues_message, command_empty_queue_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message,
-    not_in_the_queue_yet, cannot_skip, next_reached_queue_end, next_member_notify, reply_to_wrong_message_message
+    not_in_the_queue_yet, cannot_skip, next_reached_queue_end, next_member_notify, reply_to_wrong_message_message,
+    no_rights_to_unpin_message
 )
 from sql import create_session
 from sql.domain import *
@@ -103,29 +104,30 @@ def create_queue_command(update: Update, context: CallbackContext):
             )
         else:
             queue = Queue(name=queue_name, notify=True, chat_id=chat_id)
+            message = update.effective_chat.send_message(**show_queue_members(queue_name))
             try:
-                message = update.effective_chat.send_message(**show_queue_members(queue_name))
                 queue.message_id_to_edit = message.message_id
 
                 session.add(queue)
                 session.commit()
                 logger.info(f"New queue created: \n\t{queue}")
 
-                try:
+                if context.bot.get_chat_member(chat_id, context.bot.id).can_pin_messages:
                     message.pin(disable_notification=False)
-                except BadRequest:
+                else:
                     update.effective_chat.send_message(**no_rights_to_pin_message())
             except Exception as e:
                 logger.error(f"ERROR when creating queue: \n\t{queue} "
                              f"with message: \n{e}")
                 update.effective_chat.send_message(**unexpected_error())
+                message.delete()
 
 
 @log_command('delete_queue')
 @group_only_command
 def delete_queue_command(update: Update, context: CallbackContext):
     """Handler for '/delete_queue <queue_name>' command"""
-    # TODO unpin message
+
     chat_id = update.effective_chat.id
     queue_name = ' '.join(context.args)
     if not queue_name:
@@ -142,6 +144,16 @@ def delete_queue_command(update: Update, context: CallbackContext):
             session.commit()
             logger.info(f"Deleted queue: \n\t{queue}")
             update.effective_chat.send_message(**deleted_queue_message())
+
+            if context.bot.get_chat_member(chat_id, context.bot.id).can_pin_messages:
+                try:
+                    context.bot.unpin_chat_message(chat_id, queue.message_id_to_edit)
+                except BadRequest as e:
+                    logger.error(f"ERROR when tried to unpin "
+                                 f"message({queue.message_id_to_edit}) in queue({queue.queue_id}):\n\t"
+                                 f"{e}")
+            else:
+                update.effective_chat.send_message(**no_rights_to_unpin_message())
 
 
 @log_command('show_queues')

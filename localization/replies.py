@@ -81,6 +81,16 @@ def no_rights_to_pin_message(lang: str = 'en'):
     return {'text': text}
 
 
+def no_rights_to_unpin_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "I would unpin this queue with pleasure, but you didn't give me the necessary rights.😢😒\n" \
+               "Give me this permission or ask your admin to unpin manually."
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
 def delete_queue_empty_name(lang: str = 'en'):
     text: str
     if lang == 'en':
