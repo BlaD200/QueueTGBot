@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, TIMESTAMP, VARCHAR, BOOLEAN, ForeignKey, String
+from sqlalchemy import Column, Integer, TIMESTAMP, VARCHAR, BOOLEAN, ForeignKey, String, BigInteger
 from sqlalchemy.orm import relationship
 
 from sql import Base
@@ -19,7 +19,7 @@ class Queue(Base):
 
     created_at = Column(TIMESTAMP, nullable=False, default=datetime.now())
 
-    chat_id = Column(Integer, ForeignKey('chat.chat_id'))
+    chat_id = Column(BigInteger, ForeignKey('chat.chat_id'))
     chat = relationship(
         'Chat',
         back_populates='queue_ids',
@@ -36,7 +36,7 @@ class Queue(Base):
 class QueueMember(Base):
     __tablename__ = 'queue_member'
 
-    user_id = Column(Integer, nullable=False, primary_key=True)
+    user_id = Column(BigInteger, nullable=False, primary_key=True)
     user_order = Column(Integer, nullable=False)
     fullname = Column(String, nullable=False)
 
