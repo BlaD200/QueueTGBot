@@ -5,7 +5,10 @@ import logging
 from telegram import Bot, Update
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
 
-from bot.chat_status_handlers import new_chat_member_handler, left_chat_member_handler
+from bot.chat_status_handlers import (
+    new_group_member_handler, left_group_member_handler, group_migrated_handler,
+    new_group_created_handler
+)
 from bot.command_handlers import (
     start_command,
     create_queue_command,
@@ -31,7 +34,7 @@ bot = Bot(BOT_TOKEN)
 def setup():
     """
     Setting up updater.
-    Creating connection to the database.
+    Checking the connectivity with the database.
 
     Registered all handlers (for commands)
 
@@ -64,14 +67,22 @@ def setup():
     # Registering conversation handlers here
 
     # Registering handlers here #
-    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, new_chat_member_handler))
-    dispatcher.add_handler(MessageHandler(Filters.status_update.left_chat_member, left_chat_member_handler))
+
+    # Handlers for adding to a group, removing from a group, creating a new group with the bot in it
+    # and updating the group to the supergroup
+    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, new_group_member_handler))
+    dispatcher.add_handler(MessageHandler(Filters.status_update.left_chat_member, left_group_member_handler))
+    dispatcher.add_handler(MessageHandler(Filters.status_update.migrate, group_migrated_handler))
+    dispatcher.add_handler(MessageHandler(Filters.status_update.chat_created, new_group_created_handler))
+
+    # Handlers for unsupported messages and commands.
     dispatcher.add_handler(MessageHandler(Filters.command, unsupported_command_handler))
     dispatcher.add_handler(MessageHandler(Filters.all, unexpected_message))
 
     return dispatcher, updater
 
 
+# noinspection PyUnusedLocal
 def unexpected_message(update: Update, context: CallbackContext):
     logger.info(f"unexpected message: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
     pass

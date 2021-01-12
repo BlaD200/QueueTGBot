@@ -419,6 +419,7 @@ def next_command(update: Update, context: CallbackContext, queue):
         _edit_queue_members_message(queue, update.effective_chat.id, context.bot)
 
 
+# noinspection PyUnusedLocal
 @log_command('help')
 def help_command(update: Update, context: CallbackContext):
     """Handler for '/help' command"""
@@ -428,18 +429,21 @@ def help_command(update: Update, context: CallbackContext):
         update.effective_message.reply_text(**help_message_in_chat())
 
 
+# noinspection PyUnusedLocal
 @log_command('about_me')
 def about_me_command(update: Update, context: CallbackContext):
     """Handler for '/info' command"""
     update.effective_message.reply_text(**about_me_message())
 
 
+# noinspection PyUnusedLocal
 @log_command('unsupported_command')
 def unsupported_command_handler(update: Update, context: CallbackContext):
     """Handler for any command, which doesn't exist in the bot."""
     update.effective_message.reply_text(**unknown_command())
 
 
+# noinspection PyUnusedLocal
 @log_command()
 def unimplemented_command_handler(update: Update, context: CallbackContext):
     update.message.reply_text(**unimplemented_command())
@@ -450,6 +454,10 @@ __all__ = [
     'create_queue_command',
     'delete_queue_command',
     'show_queues_command',
+    'add_me_command',
+    'remove_me_command',
+    'skip_me_command',
+    'next_command',
     'help_command',
     'about_me_command',
     'unsupported_command_handler',
