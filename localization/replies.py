@@ -44,8 +44,8 @@ def start_message_private(fullname: str, lang: str = 'en'):
 def start_message_chat(fullname: str, user_id: str, lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = (f"Hello, [{fullname}](tg://user?id={user_id})\! \n"
-                "I've already here and waiting for your commands\.😉")
+        text = (f'Hello, [{fullname}](tg://user?id={user_id})\! \n'
+                'I\'ve already here and waiting for your commands\.😉')
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
@@ -219,6 +219,25 @@ def reply_to_wrong_message_message(lang: str = 'en'):
     if lang == 'en':
         text = 'You must reply to the message, contains queue members, to make the command works without arguments.\n' \
                '_Note_: the queue must be active (not deleted).'
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def notify_all_disabled_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = 'The messages with new queues *will not* be pinned more.\n\n' \
+               '_And members in this chat will not be notified when a new queue will be created..._'
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def notify_all_enabled_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = 'The messages with new queues *will be* pinned!\n\n'
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}

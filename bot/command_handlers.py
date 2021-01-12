@@ -19,7 +19,7 @@ from localization.replies import (
     unexpected_error, delete_queue_empty_name, queue_not_exist, deleted_queue_message, show_queues_message_empty,
     show_queues_message, command_empty_queue_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message,
     not_in_the_queue_yet, cannot_skip, next_reached_queue_end, next_member_notify, reply_to_wrong_message_message,
-    no_rights_to_unpin_message
+    no_rights_to_unpin_message, notify_all_disabled_message, notify_all_enabled_message
 )
 from sql import create_session
 from sql.domain import *
@@ -54,9 +54,9 @@ def log_command(command_name: str = None):
                    f"chat_id: '{chat_id}', chat_name: '{chat_name}', user: '{user_id}', args: '{args}'"
             _command_name = command_name if command_name is not None else update.effective_message.text.split(' ')[0]
             if update.edited_message:
-                logging.info(f"{_command_name}: [{info}] edited")
+                logger.info(f"{_command_name}: [{info}] edited")
             else:
-                logging.info(f"{_command_name} [{info}]")
+                logger.info(f"{_command_name} [{info}]")
 
             return f(update, context)
 
@@ -103,7 +103,7 @@ def create_queue_command(update: Update, context: CallbackContext):
                 **create_queue_exist(queue_name=queue_name)
             )
         else:
-            queue = Queue(name=queue_name, notify=True, chat_id=chat_id)
+            queue = Queue(name=queue_name, chat_id=chat_id)
             message = update.effective_chat.send_message(**show_queue_members(queue_name))
             try:
                 queue.message_id_to_edit = message.message_id
@@ -112,9 +112,11 @@ def create_queue_command(update: Update, context: CallbackContext):
                 session.commit()
                 logger.info(f"New queue created: \n\t{queue}")
 
+                # Checking if the bot has rights to pin the message.
                 if context.bot.get_chat_member(chat_id, context.bot.id).can_pin_messages:
                     message.pin(disable_notification=False)
-                else:
+                # If the message should be pinned, but the bot hasn't got rights.
+                elif queue.chat.notify:
                     update.effective_chat.send_message(**no_rights_to_pin_message())
             except Exception as e:
                 logger.error(f"ERROR when creating queue: \n\t{queue} "
@@ -417,6 +419,27 @@ def next_command(update: Update, context: CallbackContext, queue):
         logger.info(f'Updated current_order: \n\t{queue}')
 
         _edit_queue_members_message(queue, update.effective_chat.id, context.bot)
+
+
+@log_command('notify_all')
+@group_only_command
+def notify_all_command(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    session = create_session()
+    chat: Chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+    if chat:
+        if chat.notify:
+            chat.notify = False
+            session.commit()
+            update.effective_chat.send_message(**notify_all_disabled_message())
+        else:
+            chat.notify = True
+            session.commit()
+            update.effective_chat.send_message(**notify_all_enabled_message())
+        logger.info(f'Changed notify setting to {chat.notify} in chat({chat_id})')
+    else:
+        logging.error(f'Error fetching chat by chat_id({chat_id}) in active chat. '
+                      'The chat must be in the DB, but doesn\'t.')
 
 
 # noinspection PyUnusedLocal

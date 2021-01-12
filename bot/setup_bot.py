@@ -17,7 +17,7 @@ from bot.command_handlers import (
     help_command,
     about_me_command,
     unimplemented_command_handler,
-    unsupported_command_handler, add_me_command, remove_me_command, skip_me_command, next_command
+    unsupported_command_handler, add_me_command, remove_me_command, skip_me_command, next_command, notify_all_command
 )
 from bot.config import BOT_TOKEN
 from sql import get_tables, get_database_revision
@@ -53,7 +53,7 @@ def setup():
     dispatcher.add_handler(CommandHandler('create_queue', create_queue_command))
     dispatcher.add_handler(CommandHandler('delete_queue', delete_queue_command))
     dispatcher.add_handler(CommandHandler('show_queues', show_queues_command))
-    dispatcher.add_handler(CommandHandler('notify_all', unimplemented_command_handler))
+    dispatcher.add_handler(CommandHandler('notify_all', notify_all_command))
 
     dispatcher.add_handler(CommandHandler('add_me', add_me_command))
     dispatcher.add_handler(CommandHandler('remove_me', remove_me_command))
