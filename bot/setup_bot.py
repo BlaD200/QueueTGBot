@@ -2,7 +2,7 @@
 
 import logging
 
-from telegram import Bot, Update
+from telegram import Bot, Update, BotCommand
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
 
 from bot.chat_status_handlers import (
@@ -19,12 +19,12 @@ from bot.command_handlers import (
     unimplemented_command_handler,
     unsupported_command_handler, add_me_command, remove_me_command, skip_me_command, next_command, notify_all_command
 )
-from bot.config import BOT_TOKEN
+from bot.constants import BOT_TOKEN, BOT_VERSION
 from sql import get_tables, get_database_revision
 
 
 # Registering logger here
-logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
+logging.basicConfig(format='%(levelname)-15s %(name)s | %(asctime)s | %(message)s',
                     level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -41,8 +41,8 @@ def setup():
     Returns:
         dispatcher and updater
     """
+    logger.info(f'Bot version: {BOT_VERSION}')
     logger.info(f"\n\tDB revision: {get_database_revision()}; \n\ttables: {get_tables()}")
-
     logging.info("Setting up bot...")
     updater = Updater(BOT_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
@@ -79,7 +79,33 @@ def setup():
     dispatcher.add_handler(MessageHandler(Filters.command, unsupported_command_handler))
     dispatcher.add_handler(MessageHandler(Filters.all, unexpected_message))
 
+    update_command_list()
+
     return dispatcher, updater
+
+
+def update_command_list():
+    commands_str = """
+    create_queue - <queue name> Creates a new queue
+    delete_queue - <queue name> Deletes the queue
+    add_me - <queue name> Adds you to the queue
+    remove_me - <queue name> Removes you from the queue
+    skip_me - <queue name> Moves you down in the queue
+    next - <queue name> Notifies next person in the queue and moves queue down
+    show_queues - Shows all created queues
+    show_members - <queue name> Resends queue message
+    notify_all - Enables\\disables pinning the queues
+    help - Shows description
+    about_me - Detailed info about the bot
+    """
+    command_name: str
+    description: str
+    commands_list = [BotCommand(command_name.strip(), description.strip()) for command_str
+                     in commands_str.split('\n')
+                     if command_str.strip()
+                     for (command_name, description) in (command_str.split('-'),)]
+    bot.set_my_commands(commands_list)
+    logger.info('The commands list was updated.')
 
 
 # noinspection PyUnusedLocal

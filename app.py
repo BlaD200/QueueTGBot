@@ -6,7 +6,7 @@ import telegram
 from flask import Flask, request
 from telegram.ext import Dispatcher
 
-from bot.config import WEBHOOK_URL, BOT_TOKEN
+from bot.constants import WEBHOOK_URL, BOT_TOKEN
 from bot.setup_bot import *
 
 
