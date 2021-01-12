@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, TIMESTAMP, VARCHAR, BOOLEAN, ForeignKey, String, BigInteger
+from sqlalchemy import Column, Integer, TIMESTAMP, VARCHAR, ForeignKey, String, BigInteger
 from sqlalchemy.orm import relationship
 
 from sql import Base
@@ -14,7 +14,6 @@ class Queue(Base):
     queue_id = Column(Integer, nullable=False, unique=True, primary_key=True, autoincrement=True)
     name = Column(VARCHAR(255), nullable=False)
     current_order = Column(Integer, nullable=False, default=0)
-    notify = Column(BOOLEAN, nullable=False, default=True)
     message_id_to_edit = Column(Integer)
 
     created_at = Column(TIMESTAMP, nullable=False, default=datetime.now())
@@ -30,7 +29,7 @@ class Queue(Base):
 
     def __repr__(self):
         return f"Queue(id={self.queue_id}, name='{self.name}', current_order={self.current_order}, " \
-               f"created_at={self.created_at}, notify={self.notify}, message_id={self.message_id_to_edit})"
+               f"created_at={self.created_at}, message_id={self.message_id_to_edit})"
 
 
 class QueueMember(Base):

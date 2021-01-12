@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, String, TIMESTAMP, BigInteger
+from sqlalchemy import Column, String, TIMESTAMP, BigInteger, BOOLEAN
 from sqlalchemy.orm import relationship
 
 from sql import Base
@@ -13,6 +13,7 @@ class Chat(Base):
 
     chat_id = Column(BigInteger, primary_key=True, nullable=False, unique=True)
     name = Column(String, nullable=False)
+    notify = Column(BOOLEAN, nullable=False, default=True)
 
     created_at = Column(TIMESTAMP, nullable=False, default=datetime.now())
 
@@ -23,4 +24,5 @@ class Chat(Base):
     )
 
     def __repr__(self):
-        return f"Chat(chat_id={self.chat_id}, name='{self.name}', queue_ids={str(self.queue_ids)})"
+        return f"Chat(chat_id={self.chat_id}, name='{self.name}', " \
+               f"queue_ids={str(self.queue_ids)}, notify={self.notify})"
