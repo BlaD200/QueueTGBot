@@ -19,7 +19,7 @@ class Queue(Base):
 
     created_at = Column(TIMESTAMP, nullable=False, default=datetime.now())
 
-    chat_id = Column(BigInteger, ForeignKey('chat.chat_id'))
+    chat_id = Column(BigInteger, ForeignKey('chat.chat_id', onupdate='CASCADE', ondelete='CASCADE'))
     chat = relationship(
         'Chat',
         back_populates='queue_ids',
