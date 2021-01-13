@@ -24,7 +24,7 @@ from sql import get_tables, get_database_revision
 
 
 # Registering logger here
-logging.basicConfig(format='%(asctime)s %(levelname)s | %(name)s:%(lineno)-3d | %(message)s',
+logging.basicConfig(format='%(asctime)s %(levelname)s | %(name)s (%(funcName)s:%(lineno)d) | %(message)s',
                     level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
 

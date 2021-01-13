@@ -43,9 +43,9 @@ def create_session() -> Session:
         _session = _Session()
     else:
         _session.close()
-        logger.info(f'The session was closed before creating a new one: {_session}.')
+        logger.debug(f'The session was closed before creating a new one: {_session}.')
         _session = _Session()
-    logger.info(f'A new session was created: {_session}.')
+    logger.debug(f'A new session was created: {_session}.')
     return _session
 
 

@@ -103,6 +103,7 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_
             # Trying to get the queue from message_id, that user replied to.
             if update.effective_message.reply_to_message:
                 replied_message_id = update.effective_message.reply_to_message.message_id
+                logger.info(f'Replied to message({replied_message_id})')
                 queue = (session
                          .query(Queue)
                          .filter(Queue.chat_id == chat_id, Queue.message_id_to_edit == replied_message_id)
@@ -193,8 +194,8 @@ def create_queue_command(update: Update, context: CallbackContext):
                 elif queue.chat.notify:
                     update.effective_chat.send_message(**no_rights_to_pin_message())
             except Exception as e:
-                logger.error(f"ERROR when creating queue: \n\t{queue} "
-                             f"with message: \n{e}")
+                logger.exception(f"ERROR when creating queue: \n\t{queue} "
+                                 f"with message: \n{e}")
                 update.effective_chat.send_message(**unexpected_error())
                 message.delete()
 
@@ -225,9 +226,9 @@ def delete_queue_command(update: Update, context: CallbackContext):
                 try:
                     context.bot.unpin_chat_message(chat_id, queue.message_id_to_edit)
                 except BadRequest as e:
-                    logger.error(f"ERROR when tried to unpin "
-                                 f"message({queue.message_id_to_edit}) in queue({queue.queue_id}):\n\t"
-                                 f"{e}")
+                    logger.exception(f"ERROR when tried to unpin "
+                                     f"message({queue.message_id_to_edit}) in queue({queue.queue_id}):\n\t"
+                                     f"{e}")
             else:
                 update.effective_chat.send_message(**no_rights_to_unpin_message())
 
@@ -481,8 +482,7 @@ def __show_members(chat_id: int, queue: Queue, bot):
         try:
             bot.delete_message(chat_id=chat_id, message_id=queue.message_id_to_edit)
         except BadRequest as e:
-            logger.error(f'Error when deleting the previously sent message:')
-            logger.error(e)
+            logger.exception(f'Error when deleting the previously sent message: {e}')
         queue.message_id_to_edit = message.message_id
 
         session = create_session()
@@ -514,8 +514,8 @@ def __edit_queue_members_message(queue: Queue, chat_id: int, bot):
             **show_queue_members(queue.name, member_names, queue.current_order)
         )
     except BadRequest as e:
-        logger.error(f'ERROR when editing the message({queue.message_id_to_edit}) for queue({queue.queue_id}):')
-        logger.error(e)
+        logger.exception(f'ERROR when editing the message({queue.message_id_to_edit}) for queue({queue.queue_id}): \n\t'
+                         f'{e}')
         logger.warning(f'Sending a new message for the queue({queue.queue_id}) because of the previous error.')
 
         __show_members(chat_id, queue, bot)
