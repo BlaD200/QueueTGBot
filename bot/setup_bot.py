@@ -111,7 +111,6 @@ def update_command_list():
 # noinspection PyUnusedLocal
 def unexpected_message(update: Update, context: CallbackContext):
     logger.info(f"unexpected message: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
-    update.effective_chat.send_message('/helpx')
     pass
 
 

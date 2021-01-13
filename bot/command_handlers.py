@@ -27,8 +27,6 @@ from sql.domain import *
 
 
 # Registering logger here
-# logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
-#                     level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
 
 
@@ -62,6 +60,79 @@ def log_command(command_name: str = None):
             return f(update, context)
 
         return wrapped
+
+    return decorator_maker
+
+
+def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_no_queue_reply: dict):
+    """
+    Decorator function.
+
+    Tries to get the queue based on the replied message, if any,
+    or using the name specified in the command args.
+
+    * If the user replied to the message not generated for the queue
+    (stored as ``message_id_to_edit`` in the :class:`Queue` class),
+    the bot will reply with ``reply_to_wrong_message_message``.
+
+    * If the user specified nonexistent name in command args,
+    the bot will reply with ``queue_not_exist``
+
+    * If the user didn't reply to the message, generated for the queue,
+    and didn't specify the queue name in the command arguments,
+    the bot will reply with ``on_no_queue_reply``
+
+    Otherwise, the decorated function will be called with
+    (:class:`telegram.Update`, :class:`telegram.CallbackContext`, :class:`Queue`) parameters.
+
+    :param on_no_queue_log: given message will be logged, if the <b>third</b> condition is met
+    :param on_not_exist_log: given message will be logged, if the <b>second</b> condition is met
+    :param on_no_queue_reply: if the third condition is met, the bot will reply with this message.
+    Have to be in the format, used in ``replies`` module.
+
+    See Also:
+        bot.localization.replies
+    """
+
+    def decorator_maker(command_handler_function):
+        def wrapper(update: Update, context: CallbackContext):
+            chat_id = update.effective_chat.id
+            queue: Optional[Queue] = None
+
+            session = create_session()
+            # Trying to get the queue from message_id, that user replied to.
+            if update.effective_message.reply_to_message:
+                replied_message_id = update.effective_message.reply_to_message.message_id
+                queue = (session
+                         .query(Queue)
+                         .filter(Queue.chat_id == chat_id, Queue.message_id_to_edit == replied_message_id)
+                         .options(joinedload(Queue.members))
+                         .first())
+                # User replied to the wrong message (not with members) or to deleted queue.
+                if not queue:
+                    logger.info('Replied to wrong message or to the deleted queue.')
+                    update.effective_message.reply_text(**reply_to_wrong_message_message())
+
+            # User didn't reply to the message or replied to the wrong message.
+            # Checks if there name specified in command arguments.
+            queue_name = ' '.join(context.args)
+            if context.args and not queue:
+                queue = (session
+                         .query(Queue)
+                         .filter(Queue.chat_id == chat_id, Queue.name == queue_name)
+                         .options(joinedload(Queue.members))
+                         .first())
+            if queue:
+                return command_handler_function(update, context, queue)
+            # The name was specified but queue with this name wasn't found in DB
+            elif not queue and context.args:
+                logger.info(on_not_exist_log)
+                update.effective_message.reply_text(**queue_not_exist(queue_name=queue_name))
+            else:
+                logger.info(on_no_queue_log)
+                update.effective_message.reply_text(**on_no_queue_reply)
+
+        return wrapper
 
     return decorator_maker
 
@@ -174,114 +245,9 @@ def show_queues_command(update: Update, context: CallbackContext):
         update.effective_chat.send_message(**show_queues_message(queue_names))
 
 
-# TODO send a new message if the previous one is unavailable to edit
-# telegram.error.BadRequest: Message to edit not found
-def _edit_queue_members_message(queue: Queue, chat_id: int, bot):
-    member_names = __get_queue_members(queue)
-
-    try:
-        bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=queue.message_id_to_edit,
-            **show_queue_members(queue.name, member_names, queue.current_order)
-        )
-    except BadRequest as e:
-        logger.error(f'ERROR when editing the message({queue.message_id_to_edit}) for queue({queue.queue_id}):')
-        logger.error(e)
-        logger.warning(f'Sending a new message for the queue({queue.queue_id}) because of the previous error.')
-
-        __show_members(chat_id, queue, bot)
-    logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
-
-
-def __get_queue_members(queue: Queue) -> List[str]:
-    session = create_session()
-    members = (session
-               .query(QueueMember)
-               .filter(QueueMember.queue_id == queue.queue_id)
-               .order_by(QueueMember.user_order)
-               .all()
-               )
-    member_names = [member.fullname for member in members]
-    return member_names
-
-
-def insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_no_queue_reply: dict):
-    """
-    Decorator function.
-
-    Tries to get the queue based on the replied message, if any,
-    or using the name specified in the command args.
-
-    * If the user replied to the message not generated for the queue
-    (stored as ``message_id_to_edit`` in the :class:`Queue` class),
-    the bot will reply with ``reply_to_wrong_message_message``.
-
-    * If the user specified nonexistent name in command args,
-    the bot will reply with ``queue_not_exist``
-
-    * If the user didn't reply to the message, generated for the queue,
-    and didn't specify the queue name in the command arguments,
-    the bot will reply with ``on_no_queue_reply``
-
-    Otherwise, the decorated function will be called with
-    (:class:`telegram.Update`, :class:`telegram.CallbackContext`, :class:`Queue`) parameters.
-
-    :param on_no_queue_log: given message will be logged, if the <b>third</b> condition is met
-    :param on_not_exist_log: given message will be logged, if the <b>second</b> condition is met
-    :param on_no_queue_reply: if the third condition is met, the bot will reply with this message.
-    Have to be in the format, used in ``replies`` module.
-
-    See Also:
-        bot.localization.replies
-    """
-
-    def decorator_maker(command_handler_function):
-        def wrapper(update: Update, context: CallbackContext):
-            chat_id = update.effective_chat.id
-            queue: Optional[Queue] = None
-
-            session = create_session()
-            # Trying to get the queue from message_id, that user replied to.
-            if update.effective_message.reply_to_message:
-                replied_message_id = update.effective_message.reply_to_message.message_id
-                queue = (session
-                         .query(Queue)
-                         .filter(Queue.chat_id == chat_id, Queue.message_id_to_edit == replied_message_id)
-                         .options(joinedload(Queue.members))
-                         .first())
-                # User replied to the wrong message (not with members) or to deleted queue.
-                if not queue:
-                    logger.info('Replied to wrong message or to the deleted queue.')
-                    update.effective_message.reply_text(**reply_to_wrong_message_message())
-
-            # User didn't reply to the message or replied to the wrong message.
-            # Checks if there name specified in command arguments.
-            queue_name = ' '.join(context.args)
-            if context.args and not queue:
-                queue = (session
-                         .query(Queue)
-                         .filter(Queue.chat_id == chat_id, Queue.name == queue_name)
-                         .options(joinedload(Queue.members))
-                         .first())
-            if queue:
-                return command_handler_function(update, context, queue)
-            # The name was specified but queue with this name wasn't found in DB
-            elif not queue and context.args:
-                logger.info(on_not_exist_log)
-                update.effective_message.reply_text(**queue_not_exist(queue_name=queue_name))
-            else:
-                logger.info(on_no_queue_log)
-                update.effective_message.reply_text(**on_no_queue_reply)
-
-        return wrapper
-
-    return decorator_maker
-
-
 @log_command('add_me')
 @group_only_command
-@insert_queue_from_context(
+@__insert_queue_from_context(
     on_no_queue_log='Adding to queue with empty name',
     on_not_exist_log='Adding to nonexistent queue.',
     on_no_queue_reply=command_empty_queue_name(command_name='add_me')
@@ -317,12 +283,12 @@ def add_me_command(update: Update, context: CallbackContext, queue: Queue):
     session.commit()
     logger.info(f"Added member to queue: \n\t{member}")
 
-    _edit_queue_members_message(queue, chat_id, context.bot)
+    __edit_queue_members_message(queue, chat_id, context.bot)
 
 
 @log_command('remove_me')
 @group_only_command
-@insert_queue_from_context(
+@__insert_queue_from_context(
     on_no_queue_log='Removing from queue with empty name',
     on_not_exist_log='Removing from nonexistent queue',
     on_no_queue_reply=command_empty_queue_name(command_name='remove_me')
@@ -366,12 +332,12 @@ def remove_me_command(update: Update, context: CallbackContext, queue):
         logger.info(f'User removed from queue (queue_id={queue.queue_id})')
         logger.info(f'Updated user_order in queue({queue.queue_id}) for users(order>{member.user_order})')
 
-        _edit_queue_members_message(queue, chat_id, context.bot)
+        __edit_queue_members_message(queue, chat_id, context.bot)
 
 
 @log_command('skip_me')
 @group_only_command
-@insert_queue_from_context(
+@__insert_queue_from_context(
     on_no_queue_log='Skipping with empty name',
     on_not_exist_log='Skipping turn from the nonexistent queue.',
     on_no_queue_reply=command_empty_queue_name('skip_me')
@@ -403,7 +369,7 @@ def skip_me_command(update: Update, context: CallbackContext, queue):
             session.commit()
             logger.info(f'Skip queue_member({member.user_id}) in the queue({queue.queue_id})')
 
-            _edit_queue_members_message(queue, chat_id, context.bot)
+            __edit_queue_members_message(queue, chat_id, context.bot)
         else:
             logging.info(f'Cancel skipping because of no other members in queue({queue.queue_id})')
             update.effective_message.reply_text(**cannot_skip())
@@ -411,7 +377,7 @@ def skip_me_command(update: Update, context: CallbackContext, queue):
 
 @log_command('next')
 @group_only_command
-@insert_queue_from_context(
+@__insert_queue_from_context(
     on_no_queue_log='Requested "next" with the empty queue name.',
     on_not_exist_log='Requested "next" with an nonexistent queue name.',
     on_no_queue_reply=command_empty_queue_name('next')
@@ -438,39 +404,18 @@ def next_command(update: Update, context: CallbackContext, queue):
         session.commit()
         logger.info(f'Updated current_order: \n\t{queue}')
 
-        _edit_queue_members_message(queue, update.effective_chat.id, context.bot)
+        __edit_queue_members_message(queue, update.effective_chat.id, context.bot)
 
 
 @log_command('show_members')
 @group_only_command
-@insert_queue_from_context(
+@__insert_queue_from_context(
     on_no_queue_log='Requested "show_members" command with the empty queue name',
     on_not_exist_log='Requested "show_members" with an nonexistent queue name.',
     on_no_queue_reply=command_empty_queue_name('show_members')
 )
 def show_members_command(update: Update, context: CallbackContext, queue):
     __show_members(update.effective_chat.id, queue, context.bot)
-
-
-def __show_members(chat_id: int, queue: Queue, bot):
-    member_names = __get_queue_members(queue)
-    message = bot.send_message(
-        chat_id=chat_id,
-        **show_queue_members(queue.name, member_names, queue.current_order)
-    )
-    if message:
-        try:
-            bot.delete_message(chat_id=chat_id, message_id=queue.message_id_to_edit)
-        except BadRequest as e:
-            logger.error(f'Error when deleting the previously sent message:')
-            logger.error(e)
-        queue.message_id_to_edit = message.message_id
-
-        session = create_session()
-        session.add(queue)
-        session.commit()
-
-        logger.info(f'Updated message_to_edit_id in queue:\n\t{queue}')
 
 
 @log_command('notify_all')
@@ -522,6 +467,57 @@ def unsupported_command_handler(update: Update, context: CallbackContext):
 @log_command()
 def unimplemented_command_handler(update: Update, context: CallbackContext):
     update.message.reply_text(**unimplemented_command())
+
+
+def __show_members(chat_id: int, queue: Queue, bot):
+    member_names = __get_queue_members(queue)
+    message = bot.send_message(
+        chat_id=chat_id,
+        **show_queue_members(queue.name, member_names, queue.current_order)
+    )
+    if message:
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=queue.message_id_to_edit)
+        except BadRequest as e:
+            logger.error(f'Error when deleting the previously sent message:')
+            logger.error(e)
+        queue.message_id_to_edit = message.message_id
+
+        session = create_session()
+        session.add(queue)
+        session.commit()
+
+        logger.info(f'Updated message_to_edit_id in queue:\n\t{queue}')
+
+
+def __get_queue_members(queue: Queue) -> List[str]:
+    session = create_session()
+    members = (session
+               .query(QueueMember)
+               .filter(QueueMember.queue_id == queue.queue_id)
+               .order_by(QueueMember.user_order)
+               .all()
+               )
+    member_names = [member.fullname for member in members]
+    return member_names
+
+
+def __edit_queue_members_message(queue: Queue, chat_id: int, bot):
+    member_names = __get_queue_members(queue)
+
+    try:
+        bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=queue.message_id_to_edit,
+            **show_queue_members(queue.name, member_names, queue.current_order)
+        )
+    except BadRequest as e:
+        logger.error(f'ERROR when editing the message({queue.message_id_to_edit}) for queue({queue.queue_id}):')
+        logger.error(e)
+        logger.warning(f'Sending a new message for the queue({queue.queue_id}) because of the previous error.')
+
+        __show_members(chat_id, queue, bot)
+    logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
 
 
 __all__ = [
