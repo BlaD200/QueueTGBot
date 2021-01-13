@@ -173,6 +173,8 @@ def show_queues_command(update: Update, context: CallbackContext):
         update.effective_chat.send_message(**show_queues_message(queue_names))
 
 
+# TODO send a new message if the previous one is unavailable to edit
+# telegram.error.BadRequest: Message to edit not found
 def _edit_queue_members_message(queue: Queue, chat_id: int, bot):
     session = create_session()
     members = (session
@@ -421,6 +423,33 @@ def next_command(update: Update, context: CallbackContext, queue):
         _edit_queue_members_message(queue, update.effective_chat.id, context.bot)
 
 
+@log_command('show_members')
+@group_only_command
+@insert_queue_from_context(
+    on_no_queue_log='Requested "show_members" command with the empty queue name',
+    on_not_exist_log='Requested "show_members" with an nonexistent queue name.',
+    on_no_queue_reply=command_empty_queue_name('show_members')
+)
+def show_members_command(update: Update, context: CallbackContext, queue):
+    member_names = [member.fullname for member in queue.members]
+    message = update.effective_chat.send_message(
+        **show_queue_members(queue.name, member_names, queue.current_order)
+    )
+    if message:
+        try:
+            context.bot.delete_message(chat_id=update.effective_chat.id, message_id=queue.message_id_to_edit)
+        except BadRequest as e:
+            logger.error(f'Error when deleting the previously sent message:')
+            logger.error(e)
+        queue.message_id_to_edit = message.message_id
+
+        session = create_session()
+        session.add(queue)
+        session.commit()
+
+        logger.info(f'Updated message_to_edit_id in queue:\n\t{queue}')
+
+
 @log_command('notify_all')
 @group_only_command
 def notify_all_command(update: Update, context: CallbackContext):
@@ -481,6 +510,8 @@ __all__ = [
     'remove_me_command',
     'skip_me_command',
     'next_command',
+    'show_members_command',
+    'notify_all_command',
     'help_command',
     'about_me_command',
     'unsupported_command_handler',

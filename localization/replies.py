@@ -275,6 +275,7 @@ def about_me_message(lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.HTML, 'disable_web_page_preview': True}
 
 
+# TODO enable chat history before adding to admin
 def help_message(lang: str = 'en'):
     text: str
     if lang == 'en':

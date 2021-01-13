@@ -143,7 +143,7 @@ def group_migrated_handler(update: Update, context: CallbackContext):
                     f'from group(id={update.effective_chat.id}).')
     else:
         logger.info(f'Migrated '
-                    f'from group(id={update.effective_message.migrate_from_chat_id})'
+                    f'from group(id={update.effective_message.migrate_from_chat_id}) '
                     f'to supergroup(id={update.effective_chat.id})')
 
         session = create_session()
