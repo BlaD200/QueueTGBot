@@ -24,7 +24,7 @@ from sql import get_tables, get_database_revision
 
 
 # Registering logger here
-logging.basicConfig(format='%(levelname)-15s %(name)s | %(asctime)s | %(message)s',
+logging.basicConfig(format='%(asctime)s %(levelname)s | %(name)s:%(lineno)-3d | %(message)s',
                     level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -111,6 +111,7 @@ def update_command_list():
 # noinspection PyUnusedLocal
 def unexpected_message(update: Update, context: CallbackContext):
     logger.info(f"unexpected message: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
+    update.effective_chat.send_message('/helpx')
     pass
 
 

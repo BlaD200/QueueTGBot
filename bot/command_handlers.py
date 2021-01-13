@@ -1,9 +1,10 @@
 """This module contains the functions that handle all commands supported by the bot."""
 
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import text
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.elements import TextClause
 from telegram import Update
 from telegram.error import BadRequest
@@ -176,6 +177,24 @@ def show_queues_command(update: Update, context: CallbackContext):
 # TODO send a new message if the previous one is unavailable to edit
 # telegram.error.BadRequest: Message to edit not found
 def _edit_queue_members_message(queue: Queue, chat_id: int, bot):
+    member_names = __get_queue_members(queue)
+
+    try:
+        bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=queue.message_id_to_edit,
+            **show_queue_members(queue.name, member_names, queue.current_order)
+        )
+    except BadRequest as e:
+        logger.error(f'ERROR when editing the message({queue.message_id_to_edit}) for queue({queue.queue_id}):')
+        logger.error(e)
+        logger.warning(f'Sending a new message for the queue({queue.queue_id}) because of the previous error.')
+
+        __show_members(chat_id, queue, bot)
+    logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
+
+
+def __get_queue_members(queue: Queue) -> List[str]:
     session = create_session()
     members = (session
                .query(QueueMember)
@@ -184,12 +203,7 @@ def _edit_queue_members_message(queue: Queue, chat_id: int, bot):
                .all()
                )
     member_names = [member.fullname for member in members]
-    bot.edit_message_text(
-        chat_id=chat_id,
-        message_id=queue.message_id_to_edit,
-        **show_queue_members(queue.name, member_names, queue.current_order)
-    )
-    logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
+    return member_names
 
 
 def insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_no_queue_reply: dict):
@@ -234,6 +248,7 @@ def insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_no
                 queue = (session
                          .query(Queue)
                          .filter(Queue.chat_id == chat_id, Queue.message_id_to_edit == replied_message_id)
+                         .options(joinedload(Queue.members))
                          .first())
                 # User replied to the wrong message (not with members) or to deleted queue.
                 if not queue:
@@ -244,8 +259,11 @@ def insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_no
             # Checks if there name specified in command arguments.
             queue_name = ' '.join(context.args)
             if context.args and not queue:
-                queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
-
+                queue = (session
+                         .query(Queue)
+                         .filter(Queue.chat_id == chat_id, Queue.name == queue_name)
+                         .options(joinedload(Queue.members))
+                         .first())
             if queue:
                 return command_handler_function(update, context, queue)
             # The name was specified but queue with this name wasn't found in DB
@@ -431,13 +449,18 @@ def next_command(update: Update, context: CallbackContext, queue):
     on_no_queue_reply=command_empty_queue_name('show_members')
 )
 def show_members_command(update: Update, context: CallbackContext, queue):
-    member_names = [member.fullname for member in queue.members]
-    message = update.effective_chat.send_message(
+    __show_members(update.effective_chat.id, queue, context.bot)
+
+
+def __show_members(chat_id: int, queue: Queue, bot):
+    member_names = __get_queue_members(queue)
+    message = bot.send_message(
+        chat_id=chat_id,
         **show_queue_members(queue.name, member_names, queue.current_order)
     )
     if message:
         try:
-            context.bot.delete_message(chat_id=update.effective_chat.id, message_id=queue.message_id_to_edit)
+            bot.delete_message(chat_id=chat_id, message_id=queue.message_id_to_edit)
         except BadRequest as e:
             logger.error(f'Error when deleting the previously sent message:')
             logger.error(e)

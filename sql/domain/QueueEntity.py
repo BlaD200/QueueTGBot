@@ -24,8 +24,8 @@ class Queue(Base):
         back_populates='queue_ids',
         lazy=True
     )
-    members = relationship('QueueMember',
-                           cascade="all, delete, delete-orphan")
+    members: list = relationship('QueueMember',
+                                 cascade="all, delete, delete-orphan")
 
     def __repr__(self):
         return f"Queue(id={self.queue_id}, name='{self.name}', current_order={self.current_order}, " \

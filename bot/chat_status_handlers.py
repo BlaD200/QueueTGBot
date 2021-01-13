@@ -11,8 +11,8 @@ from sql.domain import *
 
 
 # Registering logger here
-logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
-                    level=logging.INFO)
+# logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
+#                     level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
 
 
