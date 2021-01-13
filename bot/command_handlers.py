@@ -146,10 +146,12 @@ def start_command(update: Update, context: CallbackContext):
     """
     chat_type = update.message.chat.type
     if chat_type == 'private':
+        logger.info(f'Started private chat with user:\n\t{update.effective_user}')
         update.effective_message.reply_text(
             **start_message_private(fullname=update.message.from_user.full_name)
         )
     else:
+        logging.info(f'Start command in group: \n\t{update.effective_chat}')
         update.effective_message.reply_text(
             **start_message_chat(fullname=update.message.from_user.full_name,
                                  user_id=update.message.from_user.id)

@@ -1,5 +1,5 @@
 """This module contains functions to connect to DB and to get info about defined tables and DB's revision slug."""
-
+import logging
 from typing import List
 
 from sqlalchemy import create_engine
@@ -8,6 +8,8 @@ from sqlalchemy.orm import sessionmaker, Session, scoped_session
 
 from sql.config import *
 
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 sqlalchemy_url = db_url if db_url is not None \
     else f'postgresql://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}'
@@ -32,14 +34,18 @@ def create_session() -> Session:
         _engine = create_engine(sqlalchemy_url)
         Base.metadata.bind = _engine
         Base.metadata.create_all(_engine)
+        logger.info('SQLAlchemy engine created')
     if _Session is None:
         _Session = scoped_session(sessionmaker(bind=_engine))
+        logger.info('Scoped session created')
 
     if _session is None:
         _session = _Session()
     else:
         _session.close()
+        logger.info(f'The session was closed before creating a new one: {_session}.')
         _session = _Session()
+    logger.info(f'A new session was created: {_session}.')
     return _session
 
 
