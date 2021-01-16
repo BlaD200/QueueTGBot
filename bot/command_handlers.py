@@ -10,6 +10,7 @@ from telegram import Update
 from telegram.error import BadRequest
 from telegram.ext import CallbackContext
 
+import app_logging
 from bot.chat_type_accepted import group_only_command
 from localization.replies import (
     start_message_private, start_message_chat,
@@ -27,7 +28,7 @@ from sql.domain import *
 
 
 # Registering logger here
-logger: logging.Logger = logging.getLogger(__name__)
+logger: logging.Logger = app_logging.get_logger(__name__)
 
 
 def log_command(command_name: str = None):

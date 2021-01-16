@@ -6,6 +6,7 @@ import telegram
 from flask import Flask, request
 from telegram.ext import Dispatcher
 
+import app_logging
 from bot.constants import WEBHOOK_URL, BOT_TOKEN
 from bot.setup_bot import *
 
@@ -16,9 +17,7 @@ app = Flask(__name__)
 dispatcher: Dispatcher
 
 # Registering logger here
-logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
-                    level=logging.INFO)
-logger: logging.Logger = logging.getLogger(__name__)
+logger: logging.Logger = app_logging.get_logger(__name__)
 
 
 @app.route("/", methods=["GET", "HEAD"])
@@ -46,4 +45,4 @@ if bot.get_webhook_info()['url'] != WEBHOOK_URL:
 logger.info(bot.get_webhook_info())
 
 dispatcher, _ = setup()
-logging.info('Started server with webhook')
+logger.info('Started server with webhook')

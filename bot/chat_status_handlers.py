@@ -6,14 +6,13 @@ from sqlalchemy.exc import IntegrityError
 from telegram import Update, User
 from telegram.ext import CallbackContext
 
+import app_logging
 from sql import create_session
 from sql.domain import *
 
 
 # Registering logger here
-# logging.basicConfig(format='%(levelname)s %(name)s | %(asctime)s | %(message)s',
-#                     level=logging.INFO)
-logger: logging.Logger = logging.getLogger(__name__)
+logger: logging.Logger = app_logging.get_logger(__name__)
 
 
 def __save_chat_to_db(chat_id: int, chat_title: str):

@@ -6,10 +6,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.orm import sessionmaker, Session, scoped_session
 
+import app_logging
 from sql.config import *
 
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger: logging.Logger = app_logging.get_logger(__name__)
 
 sqlalchemy_url = db_url if db_url is not None \
     else f'postgresql://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}'
