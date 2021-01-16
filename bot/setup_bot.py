@@ -5,6 +5,7 @@ import logging
 from telegram import Bot, Update, BotCommand
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
 
+import app_logging
 from bot.chat_status_handlers import (
     new_group_member_handler, left_group_member_handler, group_migrated_handler,
     new_group_created_handler
@@ -20,15 +21,15 @@ from bot.command_handlers import (
     show_members_command
 )
 from bot.constants import BOT_TOKEN, BOT_VERSION
+from bot.error_handler import error_handler
 from sql import get_tables, get_database_revision
 
 
-# Registering logger here
-logging.basicConfig(format='%(asctime)s %(levelname)s | %(name)s (%(funcName)s:%(lineno)d) | %(message)s',
-                    level=logging.INFO)
-logger: logging.Logger = logging.getLogger(__name__)
-
 bot = Bot(BOT_TOKEN)
+
+# Registering logger here
+app_logging.register_bot(bot)
+logger = app_logging.get_logger(__name__)
 
 
 def setup():
@@ -43,7 +44,7 @@ def setup():
     """
     logger.info(f'Bot version: {BOT_VERSION}')
     logger.info(f"\n\tDB revision: {get_database_revision()}; \n\ttables: {get_tables()}")
-    logging.info("Setting up bot...")
+    logger.info("Setting up bot...")
     updater = Updater(BOT_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
@@ -65,6 +66,7 @@ def setup():
     dispatcher.add_handler(CommandHandler('about_me', about_me_command))
 
     # Registering conversation handlers here
+    ...
 
     # Registering handlers here #
 
@@ -79,12 +81,15 @@ def setup():
     dispatcher.add_handler(MessageHandler(Filters.command, unsupported_command_handler))
     dispatcher.add_handler(MessageHandler(Filters.all, unexpected_message))
 
-    update_command_list()
+    # Handle for errors
+    dispatcher.add_error_handler(error_handler)
+
+    _update_command_list()
 
     return dispatcher, updater
 
 
-def update_command_list():
+def _update_command_list():
     commands_str = """
     create_queue - <queue name> Creates a new queue
     delete_queue - <queue name> Deletes the queue
@@ -110,7 +115,7 @@ def update_command_list():
 
 # noinspection PyUnusedLocal
 def unexpected_message(update: Update, context: CallbackContext):
-    logger.info(f"unexpected message: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
+    logger.info(f"Unexpected error: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
     pass
 
 
