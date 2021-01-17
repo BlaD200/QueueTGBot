@@ -6,11 +6,12 @@ from telegram import Bot, Update, BotCommand
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
 
 import app_logging
-from bot.chat_status_handlers import (
+from bot.constants import BOT_TOKEN, BOT_VERSION
+from bot.handlers.chat_status_handlers import (
     new_group_member_handler, left_group_member_handler, group_migrated_handler,
     new_group_created_handler
 )
-from bot.command_handlers import (
+from bot.handlers.command_handlers import (
     start_command,
     create_queue_command,
     delete_queue_command,
@@ -20,8 +21,7 @@ from bot.command_handlers import (
     unsupported_command_handler, add_me_command, remove_me_command, skip_me_command, next_command, notify_all_command,
     show_members_command
 )
-from bot.constants import BOT_TOKEN, BOT_VERSION
-from bot.error_handler import error_handler
+from bot.handlers.error_handler import error_handler
 from sql import get_tables, get_database_revision
 
 
@@ -66,7 +66,9 @@ def setup():
     dispatcher.add_handler(CommandHandler('about_me', about_me_command))
 
     # Registering conversation handlers here
-    ...
+    # dispatcher.add_handler(ConversationHandler(
+    #     entry_points=[CommandHandler('report', )]
+    # ))
 
     # Registering handlers here #
 
