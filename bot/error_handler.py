@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from app_logging import get_logger, BotCashingHandler
+from app_logging import get_logger, BotCachingHandler
 
 
 logger = get_logger(__name__)
@@ -14,8 +14,8 @@ def error_handler(update: Update, context: CallbackContext):
     logger.info(f'context.user_data: {context.user_data}')
     chat_id = update.effective_chat.id
     logger.info(f"Unexpected error: [chat_id: {chat_id}; error: {context.error}]",
-                extra={BotCashingHandler.flash_to_bot: True,
-                       BotCashingHandler.error_from_chat_id: chat_id})
+                extra={BotCachingHandler.flash_to_bot: True,
+                       BotCachingHandler.error_from_chat_id: chat_id})
 
 
 __all__ = [

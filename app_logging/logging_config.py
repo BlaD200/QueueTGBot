@@ -6,7 +6,7 @@ from typing import Optional, List, NoReturn
 
 from telegram import Bot
 
-from app_logging.bot_cashing_handler import BotCashingHandler
+from app_logging.bot_caching_handler import BotCachingHandler
 
 
 class LoggingConfig:
@@ -16,7 +16,7 @@ class LoggingConfig:
         self._log_format = '%(asctime)s [%(levelname)-7s] %(name)s (%(funcName)s:%(lineno)d) | %(message)s'
         self._bot: Optional[Bot] = None
         self._log_buffer_size: int = 50
-        self._bot_cashing_handler: Optional[BotCashingHandler] = None
+        self._bot_cashing_handler: Optional[BotCachingHandler] = None
 
         self._loggers: List[Logger] = []
 
@@ -29,7 +29,7 @@ class LoggingConfig:
 
     @property
     def bot(self) -> Bot:
-        """The bot instance, used in the :class:`BotCashingHandler` class."""
+        """The bot instance, used in the :class:`BotCachingHandler` class."""
         return self._bot
 
     @bot.setter
@@ -38,7 +38,7 @@ class LoggingConfig:
 
     @property
     def bot_cashing_handler(self):
-        """Returns the instance of the :class:`BotCashingHandler` class.
+        """Returns the instance of the :class:`BotCachingHandler` class.
         """
         return self._bot_cashing_handler
 
@@ -55,7 +55,7 @@ class LoggingConfig:
 
     def create_cashing_bot_handler(self) -> None:
         """
-        Creates the :class:`BotCashingHandler` class, if it wasn't created before.
+        Creates the :class:`BotCachingHandler` class, if it wasn't created before.
 
         Expected to be called after setting the bot.
 
@@ -64,23 +64,23 @@ class LoggingConfig:
 
         """
         if not self._bot:
-            raise ValueError('The bot must be set before creating BotCashingHandler.')
+            raise ValueError('The bot must be set before creating BotCachingHandler.')
         if not self._bot_cashing_handler:
-            self._bot_cashing_handler = BotCashingHandler(self.bot, self._log_buffer_size)
+            self._bot_cashing_handler = BotCachingHandler(self.bot, self._log_buffer_size)
             self._bot_cashing_handler.setLevel(INFO)
             self._bot_cashing_handler.setFormatter(Formatter(self._log_format))
 
     def update_loggers_with_cashing_bot_handler(self) -> None:
         """
-        Adds :class:`BotCashingHandler` to the loggers' handlers
-        to let the :class:`BotCashingHandler` store the last N log records and send them after request.
+        Adds :class:`BotCachingHandler` to the loggers' handlers
+        to let the :class:`BotCachingHandler` store the last N log records and send them after request.
 
         Note:
             Loggers itself must be added in the ``add_logger`` method.
 
         Raises:
-            AttributeError: If the bot or the BotCashingHandler was not set before calling
-                and BotCashingHandler cannot be created.
+            AttributeError: If the bot or the BotCachingHandler was not set before calling
+                and BotCachingHandler cannot be created.
         """
         if not self.bot or not self._bot_cashing_handler:
             raise AttributeError('Tried to register the CashingBotHandler '

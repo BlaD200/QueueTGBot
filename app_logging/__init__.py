@@ -4,7 +4,7 @@ import logging
 
 from telegram import Bot
 
-from app_logging.bot_cashing_handler import BotCashingHandler
+from app_logging.bot_caching_handler import BotCachingHandler
 from app_logging.logging_config import LoggingConfig
 
 
@@ -34,17 +34,17 @@ def get_logger(name: str) -> logging.Logger:
 
 def register_bot(bot: Bot, bot_log_buffer_size: int = 50) -> None:
     """
-    Used to register the bot to the :class:`BotCashingHandler`.
+    Used to register the bot to the :class:`BotCachingHandler`.
 
     The bot has to be registered in case you want to receive the error messages
     directly to your telegram chat with this bot.
 
     See also:
-        :class:`BotCashingHandler` for more information
+        :class:`BotCachingHandler` for more information
 
     Args:
         bot: the instance of the bot, to be registered
-        bot_log_buffer_size: the number of the messages, :class:`BotCashingHandler` will keep
+        bot_log_buffer_size: the number of the messages, :class:`BotCachingHandler` will keep
     """
     __log_config.bot = bot
     __log_config.log_buffer_size = bot_log_buffer_size
@@ -68,13 +68,13 @@ def __get_stream_handler() -> logging.StreamHandler:
 
 def __get_cashing_bot_handler():
     """
-    Configures :class:`BotCashingHandler` and returns it.
+    Configures :class:`BotCachingHandler` and returns it.
 
     Note:
-        The instance of the :class:`BotCashingHandler` is created only once and then reused.
+        The instance of the :class:`BotCachingHandler` is created only once and then reused.
 
     Returns:
-         configured BotCashingHandler
+         configured BotCachingHandler
     """
     if not __log_config.bot_cashing_handler:
         __log_config.create_cashing_bot_handler()
@@ -85,5 +85,5 @@ def __get_cashing_bot_handler():
 __all__ = [
     'get_logger',
     'register_bot',
-    'BotCashingHandler'
+    'BotCachingHandler'
 ]
