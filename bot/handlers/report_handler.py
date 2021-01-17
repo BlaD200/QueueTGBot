@@ -2,9 +2,12 @@ from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, Message
 from telegram.ext import CallbackContext, ConversationHandler
 
 from app_logging import get_logger, BotCachingHandler
-from bot.handlers.command_handlers import log_command
-from localization.report_error_strings import get_keyboard_for_report, report_error_message, \
-    thanks_for_feedback_message, cancel_report_message, thanks_for_feedback_without_description_message
+from app_logging.handler_logging import log_command
+from localization.report_error_strings import (
+    get_keyboard_for_report, report_error_message,
+    thanks_for_feedback_message, cancel_report_message,
+    thanks_for_feedback_without_description_message
+)
 
 
 logger = get_logger(__name__)
