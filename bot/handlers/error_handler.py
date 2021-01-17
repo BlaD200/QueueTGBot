@@ -13,9 +13,9 @@ def error_handler(update: Update, context: CallbackContext):
     logger.info(f'context.chat_data: {context.chat_data}')
     logger.info(f'context.user_data: {context.user_data}')
     chat_id = update.effective_chat.id
-    logger.info(f"Unexpected error: [chat_id: {chat_id}; error: {context.error}]",
-                extra={BotCachingHandler.flash_to_bot: True,
-                       BotCachingHandler.error_from_chat_id: chat_id})
+    logger.exception(f"Unexpected error: [chat_id: {chat_id}; error: {context.error}]",
+                     extra={BotCachingHandler.flash_to_bot: True,
+                            BotCachingHandler.error_from_chat_id: chat_id})
 
 
 __all__ = [
