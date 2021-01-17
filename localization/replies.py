@@ -132,14 +132,14 @@ def show_queues_message(queues: List[str], lang: str = 'en'):
 
 
 def show_queue_members(queue_name: str, members: List[str] = None, current_member: int = 0, lang: str = 'en'):
-    if members is None:
-        queue_members_formatted = 'No members here yet.'
-    else:
-        queue_members_formatted = "Members:\n" + (
-            ''.join([f'{i}. {member_name if i != current_member else f"*{member_name}*"}\n'
-                     for (i, member_name) in enumerate(members)]))
     text: str
     if lang == 'en':
+        if members is None:
+            queue_members_formatted = 'No members here yet.'
+        else:
+            queue_members_formatted = "Members:\n" + (
+                ''.join([f'{i}. {member_name if i != current_member else f"*{member_name}*"}\n'
+                         for (i, member_name) in enumerate(members)]))
         text = (f"*{queue_name}*\n\n"
                 f"{queue_members_formatted}")
     else:
