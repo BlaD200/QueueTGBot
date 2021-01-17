@@ -3,7 +3,7 @@
 import logging
 
 from telegram import Bot, Update, BotCommand
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext, ConversationHandler
 
 import app_logging
 from bot.constants import BOT_TOKEN, BOT_VERSION
@@ -22,6 +22,8 @@ from bot.handlers.command_handlers import (
     show_members_command
 )
 from bot.handlers.error_handler import error_handler
+from bot.handlers.report_handler import report_command, DESCRIPTION, description_handler, \
+    send_without_description_handler, cancel_handler, cancel_keyboard_button, without_description_keyboard_button
 from sql import get_tables, get_database_revision
 
 
@@ -66,9 +68,19 @@ def setup():
     dispatcher.add_handler(CommandHandler('about_me', about_me_command))
 
     # Registering conversation handlers here
-    # dispatcher.add_handler(ConversationHandler(
-    #     entry_points=[CommandHandler('report', )]
-    # ))
+
+    # Handler for the reports functionality
+    dispatcher.add_handler(ConversationHandler(
+        entry_points=[CommandHandler('report', report_command)],
+        states={
+            DESCRIPTION: [MessageHandler(Filters.text & ~Filters.text(cancel_keyboard_button)
+                                         & ~Filters.text(without_description_keyboard_button), description_handler),
+                          MessageHandler(Filters.text(without_description_keyboard_button),
+                                         send_without_description_handler)],
+        },
+        fallbacks=[MessageHandler(Filters.text(cancel_keyboard_button), cancel_handler)],
+        per_user=True
+    ))
 
     # Registering handlers here #
 
@@ -106,6 +118,7 @@ def _update_command_list():
     notify_all - Enables\\disables pinning the queues
     help - Shows description
     about_me - Detailed info about the bot
+    report - [Description] report an error to the developer
     """
     command_name: str
     description: str
@@ -119,7 +132,7 @@ def _update_command_list():
 
 # noinspection PyUnusedLocal
 def unexpected_message(update: Update, context: CallbackContext):
-    logger.info(f"Unexpected error: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
+    logger.info(f"Unexpected message: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
     pass
 
 
