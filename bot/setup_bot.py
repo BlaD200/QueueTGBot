@@ -90,6 +90,8 @@ def setup():
 
 
 def _update_command_list():
+    """Updates the bot command list at the startup of the bot."""
+
     commands_str = """
     create_queue - <queue name> Creates a new queue
     delete_queue - <queue name> Deletes the queue
