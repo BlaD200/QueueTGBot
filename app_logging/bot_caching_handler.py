@@ -3,7 +3,7 @@
 import logging
 from typing import List, Optional
 
-from telegram import Bot
+from telegram import Bot, ParseMode
 
 from bot.constants import ADMIN_ID
 
@@ -53,6 +53,10 @@ class BotCachingHandler(logging.StreamHandler):
     """The key for the ``extra``, has to be set to **True** if the log message must be sent to the admin."""
     error_from_chat_id: str = 'error_from_chat_id'
     """The key for the ``extra``, has to be set to know in which chat the error has occurred."""
+    error_reported_by_user_id: str = 'error_reported_by_user_id'
+    """The key for the ``extra``, has to be set, if the report was created by the user, not by the system."""
+    error_reported_by_user_name: str = 'error_reported_by_user_name'
+    """The key for the ``extra``, has to be set, if the report was created by the user, not by the system."""
     error_description: str = 'error_description'
     """The key for the ``extra``, has to be set to send the **description** of the error."""
 
@@ -77,26 +81,41 @@ class BotCachingHandler(logging.StreamHandler):
                 self.log_buffer.pop(0)
 
             if record.__dict__.get('flash_to_bot', False):
-                message_text: str
+                info_message: str
                 error_from_chat_id = record.__dict__.get('error_from_chat_id', 'UNSPECIFIED')
-                if record.__dict__.get('error_description', None):
-                    error_description = record.__dict__.get('error_description')
-                    message_text = f'An error was reported from the chat_id {error_from_chat_id} ' \
-                                   f'with the following description: \n{error_description}\n\n'
-                else:
-                    message_text = f'An error was occurred in chat_id {error_from_chat_id}.\n'
-                message_text += f'Sending last {self.log_buffer_size} log records: \n'
-                message_text += ''.join([f'{log}\n' for log in self.log_buffer])
 
-                self.telegram_bot.send_message(
-                    chat_id=ADMIN_ID,
-                    text=message_text
-                )
+                if record.__dict__.get('error_reported_by_user_id', None):
+                    user_id = record.__dict__.get('error_reported_by_user_id')
+
+                    info_message = f'An error was reported from the chat\_id {error_from_chat_id} '
+                    if record.__dict__.get('error_reported_by_user_name', None):
+                        user_name = record.__dict__.get('error_reported_by_user_name')
+
+                        info_message += f'by the user [{user_name}](tg://user?id={user_id})'
+                    else:
+                        info_message += f'by the user [NO NAME](tg://user?id={user_id})'
+
+                else:
+                    info_message = f'An error was occurred in the chat\_id {error_from_chat_id}.\n'
+
+                if record.__dict__.get('error_description', None):
+                    error_description = self._escape_characters_in_description(record.__dict__.get('error_description'))
+                    info_message += f', with the following description: \n_{error_description}_'
+
+                message_with_logs = f'Sending last {self.log_buffer_size} log records: \n'
+                message_with_logs += ''.join([f'{log}\n' for log in self.log_buffer])
+
+                self.telegram_bot.send_message(chat_id=ADMIN_ID, text=info_message, parse_mode=ParseMode.MARKDOWN)
+                self.telegram_bot.send_message(chat_id=ADMIN_ID, text=message_with_logs)
+
         except Exception:
             self.handleError(record)
 
     @staticmethod
-    def get_logging_extra(error_from_chat_id: int, error_description: Optional[str] = None):
+    def get_logging_extra(error_from_chat_id: int,
+                          error_reported_by_user_id: Optional[int] = None,
+                          error_reported_by_user_name: Optional[str] = None,
+                          error_description: Optional[str] = None):
         """
         Creates and returns the dictionary with info, that have to be passed to the ``extra`` dictionary.
 
@@ -105,14 +124,35 @@ class BotCachingHandler(logging.StreamHandler):
         Args:
             error_from_chat_id: the chat_id in which the error has occurred.
             error_description: the description of the error.
+            error_reported_by_user_id: the user id, if the report was created by the user
+            error_reported_by_user_name: the user fullname, if the report was created by the user
         Returns:
             the ``dict`` objects, that have to be passed to the ``log.<level>()`` method.
         """
         return {
             BotCachingHandler.flash_to_bot: True,
             BotCachingHandler.error_from_chat_id: error_from_chat_id,
-            BotCachingHandler.error_description: error_description
+            BotCachingHandler.error_description: error_description,
+            BotCachingHandler.error_reported_by_user_id: error_reported_by_user_id,
+            BotCachingHandler.error_reported_by_user_name: error_reported_by_user_name
         }
+
+    @staticmethod
+    def _escape_characters_in_description(description: str) -> str:
+        """Escapes all characters in the ``description`` string to pass it to the telegram.
+
+        Args:
+            description: the string to be escaped.
+        Returns:
+            escaped string
+
+        References:
+            https://core.telegram.org/bots/api#formatting-options
+        """
+        escaped = description.translate(str.maketrans({"*": r"\*",
+                                                       "_": r"_\__",
+                                                       "`": r"\`"}))
+        return escaped
 
 
 __all__ = [

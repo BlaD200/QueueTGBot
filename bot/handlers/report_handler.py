@@ -25,7 +25,8 @@ def report_command(update: Update, context: CallbackContext) -> int:
         chat_id = update.effective_chat.id
         description = ' '.join(context.args)
         user_id = update.effective_user.id
-        send_report(chat_id, user_id, description, update.effective_message)
+        user_name = update.effective_user.full_name
+        send_report(chat_id, description, user_id, user_name, update.effective_message)
 
         return ConversationHandler.END
     else:
@@ -48,7 +49,8 @@ def description_handler(update: Update, context: CallbackContext) -> int:
     chat_id = update.effective_chat.id
     description = update.effective_message.text
     user_id = update.effective_user.id
-    send_report(chat_id, user_id, description, update.effective_message)
+    user_name = update.effective_user.full_name
+    send_report(chat_id, description, user_id, user_name, update.effective_message)
 
     return ConversationHandler.END
 
@@ -56,8 +58,10 @@ def description_handler(update: Update, context: CallbackContext) -> int:
 def send_without_description_handler(update: Update, context: CallbackContext) -> int:
     """Handler for the ``without_description_keyboard_button`` button."""
     chat_id = update.effective_chat.id
-    logger.info(f'Description was not specified by user({update.effective_user.id}).',
-                extra={**BotCachingHandler.get_logging_extra(chat_id)})
+    user_id = update.effective_user.id
+    user_name = update.effective_user.full_name
+    logger.info(f'Description was not specified by the user({update.effective_user.id}).',
+                extra={**BotCachingHandler.get_logging_extra(chat_id, user_id, user_name)})
     update.effective_message.reply_text(**thanks_for_feedback_without_description_message(),
                                         reply_markup=ReplyKeyboardRemove(selective=True))
 
@@ -72,10 +76,10 @@ def cancel_handler(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
-def send_report(chat_id: int, user_id: int, description: str, message: Message):
+def send_report(chat_id: int, description: str, user_id: int, user_name: str, message: Message):
     """Logs the description and triggers the :class:`BotCachingHandler` to send the report to the admin."""
     logger.info(f'Description to the report: {description}'),
     logger.info(f'The user({user_id}) was sent the report with description',
-                extra={**BotCachingHandler.get_logging_extra(chat_id, description)})
+                extra={**BotCachingHandler.get_logging_extra(chat_id, user_id, user_name, description)})
     message.reply_text(**thanks_for_feedback_message(),
                        reply_markup=ReplyKeyboardRemove(selective=True))
