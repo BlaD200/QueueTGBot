@@ -1,7 +1,7 @@
 """This module contains the functions that handle all commands supported by the bot."""
 
 import logging
-from typing import Optional, List
+from typing import Optional, List, Callable, Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import joinedload
@@ -43,7 +43,7 @@ def log_command(command_name: str = None):
         command_name: name of the command to be logged. If not passed will be logged the first word in received message.
     """
 
-    def log_command_decorator_maker(f):
+    def log_command_decorator_maker(command_handler: Callable[[Update, CallbackContext], Any]):
         def log_command_wrapped(update: Update, context: CallbackContext):
             chat_id = update.effective_chat.id
             chat_name = update.effective_chat.title
@@ -58,7 +58,7 @@ def log_command(command_name: str = None):
             else:
                 logger.info(f"{_command_name} [{info}]")
 
-            return f(update, context)
+            return command_handler(update, context)
 
         return log_command_wrapped
 
@@ -95,7 +95,8 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_
         bot.localization.replies
     """
 
-    def insert_queue_from_context_decorator_maker(command_handler_function):
+    def insert_queue_from_context_decorator_maker(
+            command_handler_function: Callable[[Update, CallbackContext, Queue], Any]):
         def insert_queue_from_context_wrapper(update: Update, context: CallbackContext):
             chat_id = update.effective_chat.id
             queue: Optional[Queue] = None
