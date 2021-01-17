@@ -45,7 +45,8 @@ def start_message_chat(fullname: str, user_id: str, lang: str = 'en'):
     text: str
     if lang == 'en':
         text = (f'Hello, [{fullname}](tg://user?id={user_id})\! \n'
-                'I\'ve already here and waiting for your commands\.😉')
+                'I\'ve already here and waiting for your commands\.😉\n\n'
+                'If you are a little bit perplexed, don\'t worry, type /help to get the short instruction.🤗😌')
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
@@ -275,34 +276,51 @@ def about_me_message(lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.HTML, 'disable_web_page_preview': True}
 
 
-# TODO enable chat history before adding to admin
-def help_message(lang: str = 'en'):
+def help_message_private(lang: str = 'en'):
     text: str
     if lang == 'en':
         text = ("Add this bot to the group and type\n"
-                "/create_queue <queue name> \n"
-                "command to create a queue. You can also type /notify_all command "
+                "/create\_queue <queue name> \n"
+                "command to create a queue. You _should_ also give this bot the rights to *pin* the messages "
                 "before creating any queue to notify group members when some queue was created. "
                 "You can then add yourself to the created queue by typing\n"
-                "/add_me <queue name> \n"
+                "/add\_me <queue name> \n"
                 "command. \n"
-                "And, at the end, type \n"
+                "And, in the end, type \n"
                 "/next <queue name> \n"
                 "command to notify a group member, whose turn came and move the queue further.\n"
+                "For your comfort, you can reply with command add\_me, remove\_me, skip\_me, next, and show\_members to "
+                "the message with queue and don't type the name by hand.)☺\n"
                 "\n"
                 "You can also type '/' to see all available commands.\n")
     else:
         text = "TODO"
-    return {'text': text}
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
 def help_message_in_chat(lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = 'TODO'
+        text = ('Alright, I\'ve already in the group.🥳\n'
+                'Now, give me the rights to *pin* the messages, so your group members will be *notified* '
+                'when the queue will be created!'
+                '\n\n'
+                'Done? Amazing!) To create a new queue send \n'
+                '/create\_queue <queue name> \n'
+                'command. And don\'t forget to type the future queue\'s *name*.)👍 '
+                '\n\n'
+                'Next step is to become the *participant* in the created queue.✅ '
+                'To do this, just reply to the message, with the corresponding queue, '
+                'with the /add\_me command. (You can also leave the queue by sending /remove\_me command) '
+                '\n\n'
+                'And the last important thing: when the time comes, to move your queue further, '
+                'just reply to the queue with the /next command, and the next member will be notified, '
+                'so no one will skip their turn!💪'
+                '\n\n'
+                'So simple, yes?) Well, good luck, _and let there be only honest queues._😎😎')
     else:
         text = "TODO"
-    return {'text': text}
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
 def unknown_command(lang: str = 'en'):

@@ -17,7 +17,7 @@ from localization.replies import (
     start_message_private, start_message_chat,
     unknown_command, unimplemented_command,
     create_queue_exist, create_queue_empty_name,
-    help_message, help_message_in_chat,
+    help_message_private, help_message_in_chat,
     about_me_message,
     unexpected_error, delete_queue_empty_name, queue_not_exist, deleted_queue_message, show_queues_message_empty,
     show_queues_message, command_empty_queue_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message,
@@ -416,7 +416,7 @@ def notify_all_command(update: Update, context: CallbackContext):
 def help_command(update: Update, context: CallbackContext):
     """Handler for '/help' command"""
     if update.effective_chat.type == 'private':
-        update.effective_message.reply_text(**help_message())
+        update.effective_message.reply_text(**help_message_private())
     else:
         update.effective_message.reply_text(**help_message_in_chat())
 
