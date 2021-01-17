@@ -43,8 +43,8 @@ def log_command(command_name: str = None):
         command_name: name of the command to be logged. If not passed will be logged the first word in received message.
     """
 
-    def decorator_maker(f):
-        def wrapped(update: Update, context: CallbackContext):
+    def log_command_decorator_maker(f):
+        def log_command_wrapped(update: Update, context: CallbackContext):
             chat_id = update.effective_chat.id
             chat_name = update.effective_chat.title
             user_id = update.effective_user.id
@@ -60,9 +60,9 @@ def log_command(command_name: str = None):
 
             return f(update, context)
 
-        return wrapped
+        return log_command_wrapped
 
-    return decorator_maker
+    return log_command_decorator_maker
 
 
 def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_no_queue_reply: dict):
@@ -95,8 +95,8 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_
         bot.localization.replies
     """
 
-    def decorator_maker(command_handler_function):
-        def wrapper(update: Update, context: CallbackContext):
+    def insert_queue_from_context_decorator_maker(command_handler_function):
+        def insert_queue_from_context_wrapper(update: Update, context: CallbackContext):
             chat_id = update.effective_chat.id
             queue: Optional[Queue] = None
 
@@ -134,9 +134,9 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_
                 logger.info(on_no_queue_log)
                 update.effective_message.reply_text(**on_no_queue_reply)
 
-        return wrapper
+        return insert_queue_from_context_wrapper
 
-    return decorator_maker
+    return insert_queue_from_context_decorator_maker
 
 
 @log_command('start')
