@@ -102,11 +102,26 @@ class BotCachingHandler(logging.StreamHandler):
                     error_description = self._escape_characters_in_description(record.__dict__.get('error_description'))
                     info_message += f', with the following description: \n_{error_description}_'
 
-                message_with_logs = f'Sending last {self.log_buffer_size} log records: \n'
-                message_with_logs += ''.join([f'{log}\n' for log in self.log_buffer])
-
                 self.telegram_bot.send_message(chat_id=ADMIN_ID, text=info_message, parse_mode=ParseMode.MARKDOWN)
-                self.telegram_bot.send_message(chat_id=ADMIN_ID, text=message_with_logs)
+
+                message_with_logs = f'Sending last {self.log_buffer_size} log records: \n'
+                # The telegram API accepts the messages only under 4096 char lengths
+                # So, if logs lengths more, then 4096 char, it will be split into several messages.
+                for log in self.log_buffer:
+                    if len(message_with_logs) + len(log) > 4096:
+                        self.telegram_bot.send_message(chat_id=ADMIN_ID, text=message_with_logs)
+                        if len(log) > 4096:
+                            for log_part_range in range(0, len(log), 4096):
+                                self.telegram_bot.send_message(chat_id=ADMIN_ID,
+                                                               text=log[log_part_range:log_part_range + 4096])
+                            message_with_logs = ''
+                        else:
+                            message_with_logs = f'{log}\n'
+                    else:
+                        message_with_logs += f'{log}\n'
+
+                if message_with_logs:
+                    self.telegram_bot.send_message(chat_id=ADMIN_ID, text=message_with_logs)
 
         except Exception:
             self.handleError(record)

@@ -415,6 +415,7 @@ def notify_all_command(update: Update, context: CallbackContext):
 @log_command('help')
 def help_command(update: Update, context: CallbackContext):
     """Handler for '/help' command"""
+    update.effective_message.reply_text(text='_underscore', parse_mode='MARKDOWN')
     if update.effective_chat.type == 'private':
         update.effective_message.reply_text(**help_message_private())
     else:
