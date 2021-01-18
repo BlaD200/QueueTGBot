@@ -1,7 +1,9 @@
 """This module contains the :class:`LoggingConfig` class."""
-
+import os
 from logging import INFO, Formatter
 from logging import Logger
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Optional, List, NoReturn
 
 from telegram import Bot
@@ -17,6 +19,11 @@ class LoggingConfig:
         self._bot: Optional[Bot] = None
         self._log_buffer_size: int = 50
         self._bot_cashing_handler: Optional[BotCachingHandler] = None
+        if 'bot' in os.getcwd():
+            self._log_file_path = Path(Path(os.getcwd()).parent, 'logs', 'app.log')
+        else:
+            self._log_file_path = Path(os.getcwd(), 'logs', 'app.log')
+        self._create_rotation_file_handler()
 
         self._loggers: List[Logger] = []
 
@@ -41,6 +48,10 @@ class LoggingConfig:
         """Returns the instance of the :class:`BotCachingHandler` class.
         """
         return self._bot_cashing_handler
+
+    @property
+    def rotating_file_handler(self):
+        return self._rotating_file_handler
 
     @property
     def loggers(self) -> List[Logger]:
@@ -91,3 +102,9 @@ class LoggingConfig:
         for logger in self._loggers:
             if self._bot_cashing_handler not in logger.handlers:
                 logger.addHandler(self._bot_cashing_handler)
+
+    def _create_rotation_file_handler(self) -> None:
+        print(self._log_file_path)
+        self._rotating_file_handler = RotatingFileHandler(self._log_file_path, maxBytes=10000, backupCount=2)
+        self._rotating_file_handler.setLevel(INFO)
+        self._rotating_file_handler.setFormatter(Formatter(self._log_format))

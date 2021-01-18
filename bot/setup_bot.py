@@ -1,6 +1,8 @@
 """In this module defined setup function, that is needed to configure bot before startup."""
 
 import logging
+import os
+from pathlib import Path
 
 from telegram import Bot, Update, BotCommand
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext, ConversationHandler
@@ -67,6 +69,8 @@ def setup():
     dispatcher.add_handler(CommandHandler('help', help_command))
     dispatcher.add_handler(CommandHandler('about_me', about_me_command))
 
+    dispatcher.add_handler(CommandHandler('send_logs', send_logs))
+
     # Registering conversation handlers here
 
     # Handler for the reports functionality
@@ -101,6 +105,16 @@ def setup():
     _update_command_list()
 
     return dispatcher, updater
+
+
+def send_logs(update: Update, context: CallbackContext):
+    if update.effective_chat.type == 'private':
+        if 'bot' in os.getcwd():
+            log_file_path = Path(Path(os.getcwd()).parent, 'logs', 'app.log')
+        else:
+            log_file_path = Path(os.getcwd(), 'app_logging', 'logs', 'app.log')
+        logger.warning(f'Sending logs to user({update.effective_user.id})')
+        update.effective_message.reply_document(open(log_file_path), filename='app.log')
 
 
 def _update_command_list():

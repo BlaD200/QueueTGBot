@@ -26,6 +26,7 @@ def get_logger(name: str) -> logging.Logger:
     logger.addHandler(__get_stream_handler())
     if __log_config.bot:
         logger.addHandler(__log_config.bot_cashing_handler)
+    logger.addHandler(__get_rotation_file_handler())
 
     __log_config.add_logger(logger)
 
@@ -80,6 +81,10 @@ def __get_cashing_bot_handler():
         __log_config.create_cashing_bot_handler()
 
     return __log_config.bot_cashing_handler
+
+
+def __get_rotation_file_handler():
+    return __log_config.rotating_file_handler
 
 
 __all__ = [
