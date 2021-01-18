@@ -93,7 +93,8 @@ def setup():
     dispatcher.add_handler(MessageHandler(Filters.status_update.chat_created, new_group_created_handler))
 
     # Handlers for unsupported messages and commands.
-    dispatcher.add_handler(MessageHandler(Filters.command, unsupported_command_handler))
+    dispatcher.add_handler(MessageHandler(Filters.command & (Filters.regex(rf'.*@{bot.username}')
+                                                             | Filters.regex(r'/\w+$')), unsupported_command_handler))
     dispatcher.add_handler(MessageHandler(Filters.all, unexpected_message))
 
     # Handle for errors
