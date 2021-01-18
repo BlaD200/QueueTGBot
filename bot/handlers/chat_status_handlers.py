@@ -5,6 +5,7 @@ import logging
 
 from sqlalchemy.exc import IntegrityError
 from telegram import Update, User
+from telegram.error import Unauthorized
 from telegram.ext import CallbackContext
 
 import app_logging
@@ -92,16 +93,23 @@ def left_group_member_handler(update: Update, context: CallbackContext):
     """
     is_me = update.effective_message.left_chat_member.id == context.bot.id
     chat_id = update.effective_chat.id
+
+    # If the bot was kicked from the chat, he can't get the number of the members left
+    try:
+        members_left = update.effective_chat.get_members_count()
+    except Unauthorized as e:
+        logger.warning(f'Cannot get the number of the members left int chat({chat_id}): {e}')
+        members_left = None
+
     logger.info(f"left member: "
                 f"\n\tis_me: {is_me}"
                 f"\n\t[chat_id: {chat_id}; "
                 f"\n\tleft_chat_member: {update.effective_message.left_chat_member}; "
                 f"\n\tfrom: {update.effective_message.from_user}"
-                f"\n\tmembers left: {update.effective_chat.get_members_count()}]")
+                f"\n\tmembers left: {members_left}]")
 
-    if is_me or update.effective_chat.get_members_count() == 1:
-        if update.effective_chat.get_members_count() == 1:
-            update.effective_chat.get_members_count()
+    if is_me or members_left == 1:
+        if members_left == 1:
             logger.info(f'The bot has left from the chat({chat_id}) because only it left in the group.')
         else:
             logger.info(f"Removed from chat_id {chat_id}")
