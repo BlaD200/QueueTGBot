@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 from telegram import Update
 from telegram.ext import CallbackContext
 

@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 # noinspection PyUnresolvedReferences
 """
 In this module defines all text constants used by the bot to create text replies.

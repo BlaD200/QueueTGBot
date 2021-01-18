@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, Message
 from telegram.ext import CallbackContext, ConversationHandler
 

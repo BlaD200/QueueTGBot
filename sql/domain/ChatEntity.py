@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module contains a class representation of the 'chat' table in DB."""
 
 from datetime import datetime

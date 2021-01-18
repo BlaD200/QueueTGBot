@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 import os
 import sys
 from logging.config import fileConfig

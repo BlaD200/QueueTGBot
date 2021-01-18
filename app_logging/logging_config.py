@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module contains the :class:`LoggingConfig` class."""
 
 from logging import INFO, Formatter

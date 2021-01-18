@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """The module contains the ``BotCachingHandler`` class."""
 
 import logging

@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module contains the functions that handle joining and leaving from the chat."""
 
 import logging

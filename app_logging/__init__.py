@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module encapsulates all things related to logging in this app."""
 
 import logging

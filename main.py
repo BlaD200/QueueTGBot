@@ -1,3 +1,5 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
+
 import json
 import logging
 from urllib.request import urlopen

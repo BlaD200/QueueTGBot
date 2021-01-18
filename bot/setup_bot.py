@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """In this module defined setup function, that is needed to configure bot before startup."""
 
 import logging

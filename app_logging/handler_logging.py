@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module contains the decorator functions, that can be used for logging handler calls."""
 from typing import Callable, Any
 

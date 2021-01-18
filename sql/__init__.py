@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module contains functions to connect to DB and to get info about defined tables and DB's revision slug."""
 import logging
 from typing import List

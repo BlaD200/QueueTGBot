@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module contains decorators, used to manage command accessibility from different chat types."""
 from typing import Callable, Any
 

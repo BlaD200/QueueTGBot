@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module contains a class representation of the 'queue' and 'queue_members' tables in DB."""
 
 from datetime import datetime

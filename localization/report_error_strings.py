@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """All text constants related to the ``report_handler.py`` module."""
 
 from typing import List

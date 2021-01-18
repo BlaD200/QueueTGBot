@@ -1,3 +1,4 @@
+# Copyright (C) 2021 Vladyslav Synytsyn
 """This module contains the functions that handle all commands supported by the bot."""
 
 import logging
