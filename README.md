@@ -27,7 +27,7 @@ My creator said that he will be very thankful for your feedback,
 any suggestions are welcomed and bug reports are priceless!
 (If you encounter a problem, use the command /report to tell me about this.)
 
-###License & copiright
+### License & copiright
 
 Copyright (C) 2021 Vladyslav Synytsyn
 Licensed under the [Mozilla Public License 2.0](LICENSE), [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot/blob/master/LICENSE)
