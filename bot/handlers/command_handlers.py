@@ -373,7 +373,7 @@ def next_command(update: Update, context: CallbackContext, queue):
         logging.info(f'Next member: {member}')
         update.effective_chat.send_message(**next_member_notify(member.fullname, member.user_id, queue.name))
 
-        session.add(queue)
+        session.merge(queue)
         session.commit()
         logger.info(f'Updated current_order: \n\t{queue}')
 
