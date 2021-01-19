@@ -12,18 +12,23 @@ from localization.replies import private_unaccepted
 logger = get_logger(__name__)
 
 
-def group_only_command(handler: Callable[[Update, CallbackContext], Any]):
+def group_only_handler(handler: Callable[[Update, CallbackContext], Any]):
     """
     Decorator function. \n
 
-    It is used to decorate command handlers, that HAVE TO accept two arguments:
+    It is used to decorate handlers, that HAVE TO accept two arguments:
     :class:`telegram.Update` and :class:`telegram.CallbackContext` \n
 
-    The wrapped function will be called ONLY if the chat type is 'group' or 'supergroup'.
-    Otherwise will be sent ``bot.constants.private_unaccepted``
+    Note:
+        The wrapped function will be called ONLY if the chat type is 'group' or 'supergroup'.
+        Otherwise will be sent ``bot.constants.private_unaccepted``
 
-    :param handler: handler function for command
-    :return: given function wrapped with chat type check.
+        You can also use ``Filters.chat_type.private`` for filtering your messages.
+
+    Args:
+        handler: handler function for command
+    Returns:
+        given function wrapped with chat type check.
     """
 
     def group_only_command_wrapper(update: Update, context: CallbackContext):
@@ -62,6 +67,6 @@ def private_only_handler(handler: Callable[[Update, CallbackContext], Any]):
 
 
 __all__ = [
-    'group_only_command',
+    'group_only_handler',
     'private_only_handler'
 ]
