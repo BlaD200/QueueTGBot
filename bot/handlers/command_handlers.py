@@ -13,7 +13,7 @@ from telegram.ext import CallbackContext
 
 import app_logging
 from app_logging.handler_logging import log_command
-from bot.chat_type_accepted import group_only_command
+from bot.chat_type_accepted import group_only_handler
 from localization.replies import (
     start_message_private, start_message_chat,
     unknown_command, unimplemented_command,
@@ -130,7 +130,7 @@ def start_command(update: Update, context: CallbackContext):
 
 
 @log_command('create_queue')
-@group_only_command
+@group_only_handler
 def create_queue_command(update: Update, context: CallbackContext):
     """Handler for '/create_queue <queue_name>' command"""
 
@@ -171,7 +171,7 @@ def create_queue_command(update: Update, context: CallbackContext):
 
 
 @log_command('delete_queue')
-@group_only_command
+@group_only_handler
 def delete_queue_command(update: Update, context: CallbackContext):
     """Handler for '/delete_queue <queue_name>' command"""
 
@@ -204,7 +204,7 @@ def delete_queue_command(update: Update, context: CallbackContext):
 
 
 @log_command('show_queues')
-@group_only_command
+@group_only_handler
 def show_queues_command(update: Update, context: CallbackContext):
     """Handler for '/show_queues' command"""
 
@@ -219,7 +219,7 @@ def show_queues_command(update: Update, context: CallbackContext):
 
 
 @log_command('add_me')
-@group_only_command
+@group_only_handler
 @__insert_queue_from_context(
     on_no_queue_log='Adding to queue with empty name',
     on_not_exist_log='Adding to nonexistent queue.',
@@ -260,7 +260,7 @@ def add_me_command(update: Update, context: CallbackContext, queue: Queue):
 
 
 @log_command('remove_me')
-@group_only_command
+@group_only_handler
 @__insert_queue_from_context(
     on_no_queue_log='Removing from queue with empty name',
     on_not_exist_log='Removing from nonexistent queue',
@@ -309,7 +309,7 @@ def remove_me_command(update: Update, context: CallbackContext, queue):
 
 
 @log_command('skip_me')
-@group_only_command
+@group_only_handler
 @__insert_queue_from_context(
     on_no_queue_log='Skipping with empty name',
     on_not_exist_log='Skipping turn from the nonexistent queue.',
@@ -349,7 +349,7 @@ def skip_me_command(update: Update, context: CallbackContext, queue):
 
 
 @log_command('next')
-@group_only_command
+@group_only_handler
 @__insert_queue_from_context(
     on_no_queue_log='Requested "next" with the empty queue name.',
     on_not_exist_log='Requested "next" with an nonexistent queue name.',
@@ -381,7 +381,7 @@ def next_command(update: Update, context: CallbackContext, queue):
 
 
 @log_command('show_members')
-@group_only_command
+@group_only_handler
 @__insert_queue_from_context(
     on_no_queue_log='Requested "show_members" command with the empty queue name',
     on_not_exist_log='Requested "show_members" with an nonexistent queue name.',
@@ -392,7 +392,7 @@ def show_members_command(update: Update, context: CallbackContext, queue):
 
 
 @log_command('notify_all')
-@group_only_command
+@group_only_handler
 def notify_all_command(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
     session = create_session()

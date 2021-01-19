@@ -7,6 +7,7 @@ from telegram import Bot, Update, BotCommand
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext, ConversationHandler
 
 import app_logging
+from bot.chat_type_accepted import private_only_handler
 from bot.constants import BOT_TOKEN, BOT_VERSION
 from bot.handlers.chat_status_handlers import (
     new_group_member_handler, left_group_member_handler, group_migrated_handler,
@@ -95,7 +96,7 @@ def setup():
     # Handlers for unsupported messages and commands.
     dispatcher.add_handler(MessageHandler(Filters.command & (Filters.regex(rf'.*@{bot.username}')
                                                              | Filters.regex(r'/\w+$')), unsupported_command_handler))
-    dispatcher.add_handler(MessageHandler(Filters.all, unexpected_message))
+    dispatcher.add_handler(MessageHandler(Filters.all & Filters.chat_type.private, unexpected_message))
 
     # Handle for errors
     dispatcher.add_error_handler(error_handler)
@@ -133,6 +134,7 @@ def _update_command_list():
 
 
 # noinspection PyUnusedLocal
+@private_only_handler
 def unexpected_message(update: Update, context: CallbackContext):
     logger.info(f"Unexpected message: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
     pass
