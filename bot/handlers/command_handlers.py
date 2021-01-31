@@ -195,7 +195,7 @@ def delete_queue_command(update: Update, context: CallbackContext):
 
             if context.bot.get_chat_member(chat_id, context.bot.id).can_pin_messages:
                 try:
-                    context.bot.unpin_chat_message(chat_id, queue.message_id_to_edit)
+                    context.bot.unpin_chat_message(chat_id, message_id=queue.message_id_to_edit)
                 except BadRequest as e:
                     logger.warning(f"ERROR when tried to unpin "
                                    f"message({queue.message_id_to_edit}) in queue({queue.queue_id}):\n\t"
