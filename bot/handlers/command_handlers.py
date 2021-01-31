@@ -122,7 +122,7 @@ def start_command(update: Update, context: CallbackContext):
             **start_message_private(fullname=update.message.from_user.full_name)
         )
     else:
-        logging.info(f'Start command in group: \n\t{update.effective_chat}')
+        logger.info(f'Start command in group: \n\t{update.effective_chat}')
         update.effective_message.reply_text(
             **start_message_chat(fullname=update.message.from_user.full_name,
                                  user_id=update.message.from_user.id)
@@ -159,7 +159,8 @@ def create_queue_command(update: Update, context: CallbackContext):
 
                 # Checking if the bot has rights to pin the message.
                 if context.bot.get_chat_member(chat_id, context.bot.id).can_pin_messages:
-                    message.pin(disable_notification=False)
+                    if queue.chat.notify:
+                        message.pin()
                 # If the message should be pinned, but the bot hasn't got rights.
                 elif queue.chat.notify:
                     update.effective_chat.send_message(**no_rights_to_pin_message())
@@ -194,11 +195,11 @@ def delete_queue_command(update: Update, context: CallbackContext):
 
             if context.bot.get_chat_member(chat_id, context.bot.id).can_pin_messages:
                 try:
-                    context.bot.unpin_chat_message(chat_id, queue.message_id_to_edit)
+                    context.bot.unpin_chat_message(chat_id, message_id=queue.message_id_to_edit)
                 except BadRequest as e:
-                    logger.exception(f"ERROR when tried to unpin "
-                                     f"message({queue.message_id_to_edit}) in queue({queue.queue_id}):\n\t"
-                                     f"{e}")
+                    logger.warning(f"ERROR when tried to unpin "
+                                   f"message({queue.message_id_to_edit}) in queue({queue.queue_id}):\n\t"
+                                   f"{e}")
             else:
                 update.effective_chat.send_message(**no_rights_to_unpin_message())
 
