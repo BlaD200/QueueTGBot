@@ -15,6 +15,12 @@ See Also:
 from typing import List
 
 from telegram import ParseMode
+from telegram.utils.helpers import escape_markdown
+
+from app_logging import get_logger
+
+
+logger = get_logger(__name__)
 
 
 def private_unaccepted(lang: str = 'en'):
@@ -56,10 +62,10 @@ def start_message_chat(fullname: str, user_id: str, lang: str = 'en'):
 def create_queue_exist(queue_name: str, lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = f"Sorry, but the queue with the given name *{queue_name}* already exists."
+        text = f"Sorry, but the queue with the given name *{escape_markdown(queue_name, 2)}* already exists\."
     else:
         text = "TODO"
-    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
 
 
 def create_queue_empty_name(lang: str = 'en'):
@@ -136,17 +142,21 @@ def show_queues_message(queues: List[str], lang: str = 'en'):
 def show_queue_members(queue_name: str, members: List[str] = None, current_member: int = 0, lang: str = 'en'):
     text: str
     if lang == 'en':
-        if members is None:
-            queue_members_formatted = 'No members here yet.'
+        if not members:
+            queue_members_formatted = 'No members here yet\.'
         else:
             queue_members_formatted = "Members:\n" + (
-                ''.join([f'{i}. {member_name if i != current_member else f"*{member_name}*"}\n'
-                         for (i, member_name) in enumerate(members)]))
-        text = (f"*{queue_name}*\n\n"
+                ''.join(
+                    [f'{i}\. '
+                     f'{(lambda member: member if i != current_member else f"*{member}*")(escape_markdown(member_name, 2))}'
+                     f'\n'
+                     for (i, member_name) in enumerate(members)]))
+        queue_name_escaped = escape_markdown(queue_name, 2)
+        text = (f"*{queue_name_escaped}*\n\n"
                 f"{queue_members_formatted}")
     else:
         text = "TODO"
-    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
 
 
 def show_queues_message_empty(lang: str = 'en'):
