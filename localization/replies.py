@@ -47,7 +47,7 @@ def start_message_chat(fullname: str, user_id: str, lang: str = 'en'):
     if lang == 'en':
         text = (f'Hello, [{fullname}](tg://user?id={user_id})\! \n'
                 'I\'ve already here and waiting for your commands\.😉\n\n'
-                'If you are a little bit perplexed, don\'t worry, type /help to get the short instruction.🤗😌')
+                'If you are a little bit perplexed, don\'t worry, type /help to get the short instruction\.🤗😌')
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
