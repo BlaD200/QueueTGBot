@@ -159,7 +159,8 @@ def create_queue_command(update: Update, context: CallbackContext):
 
                 # Checking if the bot has rights to pin the message.
                 if context.bot.get_chat_member(chat_id, context.bot.id).can_pin_messages:
-                    message.pin()
+                    if queue.chat.notify:
+                        message.pin()
                 # If the message should be pinned, but the bot hasn't got rights.
                 elif queue.chat.notify:
                     update.effective_chat.send_message(**no_rights_to_pin_message())
