@@ -164,7 +164,11 @@ def next_action(update: Update, queue: Queue, bot: Bot):
     )
     if member is None:
         logger.info(f"Reached the end of the queue({queue.queue_id})")
-        update.effective_chat.send_message(**next_reached_queue_end())
+        if update.callback_query:
+            update.callback_query.answer(**next_reached_queue_end(), cache_time=5)
+        else:
+            # TODO add silence setting
+            update.effective_message.reply_text(**next_reached_queue_end())
     else:
         logger.info(f'Next member: {member}')
         update.effective_chat.send_message(**next_member_notify(member.fullname, member.user_id, queue.name))

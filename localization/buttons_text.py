@@ -1,3 +1,4 @@
+# TODO rename to CallbackButtonsText
 class ButtonsText:
     _add_me_text_en = 'Enrol'
     _remove_me_text_en = 'Unenroll'

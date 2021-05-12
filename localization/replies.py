@@ -180,6 +180,42 @@ def command_empty_queue_name(command_name: str, lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
+def enter_queue_name_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = 'Enter the name of the queue: '
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
+def queue_created_remove_keyboard_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = '✅'
+    else:
+        text = "✅"
+    return {'text': text}
+
+
+def cancel_queue_creation_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = 'Okay, the queue creation was cancelled.'
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
+def cancel_queue_deletion_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = 'Okay, the queue deletion was cancelled.'
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
 def callback_empty_queue_id(command_name: str, lang: str = 'en'):
     text: str
     if lang == 'en':
