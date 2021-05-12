@@ -4,16 +4,17 @@
 import logging
 from typing import Optional, List, Callable, Any
 
-from sqlalchemy import text
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.elements import TextClause
 from telegram import Update
 from telegram.error import BadRequest
 from telegram.ext import CallbackContext
 
 import app_logging
 from app_logging.handler_logging import log_command
+from bot.callbacks.message_buttons import show_members_buttons
 from bot.chat_type_accepted import group_only_handler
+from bot.controller.member_controller import add_me_action, remove_me_action, next_action, \
+    skip_me_action
 from localization.replies import (
     start_message_private, start_message_chat,
     unknown_command, unimplemented_command,
@@ -21,8 +22,8 @@ from localization.replies import (
     help_message_private, help_message_in_chat,
     about_me_message,
     unexpected_error, delete_queue_empty_name, queue_not_exist, deleted_queue_message, show_queues_message_empty,
-    show_queues_message, command_empty_queue_name, show_queue_members, already_in_the_queue, no_rights_to_pin_message,
-    not_in_the_queue_yet, cannot_skip, next_reached_queue_end, next_member_notify, reply_to_wrong_message_message,
+    show_queues_message, command_empty_queue_name, show_queue_members, no_rights_to_pin_message,
+    reply_to_wrong_message_message,
     no_rights_to_unpin_message, notify_all_disabled_message, notify_all_enabled_message
 )
 from sql import create_session
@@ -149,12 +150,17 @@ def create_queue_command(update: Update, context: CallbackContext):
             )
         else:
             queue = Queue(name=queue_name, chat_id=chat_id)
-            message = update.effective_chat.send_message(**show_queue_members(queue_name))
+            message = None
             try:
-                queue.message_id_to_edit = message.message_id
-
                 session.add(queue)
                 session.commit()
+
+                message = update.effective_chat.send_message(**show_members_buttons(queue.queue_id, queue_name))
+
+                queue.message_id_to_edit = message.message_id
+                session.merge(queue)
+                session.commit()
+
                 logger.info(f"New queue created: \n\t{queue}")
 
                 # Checking if the bot has rights to pin the message.
@@ -168,7 +174,8 @@ def create_queue_command(update: Update, context: CallbackContext):
                 logger.exception(f"ERROR when creating queue: \n\t{queue} "
                                  f"with message: \n{e}")
                 update.effective_chat.send_message(**unexpected_error())
-                message.delete()
+                if message:
+                    message.delete()
 
 
 @log_command('delete_queue')
@@ -227,37 +234,7 @@ def show_queues_command(update: Update, context: CallbackContext):
     on_no_queue_reply=command_empty_queue_name(command_name='add_me')
 )
 def add_me_command(update: Update, context: CallbackContext, queue: Queue):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-
-    session = create_session()
-    member = (session
-              .query(QueueMember)
-              .filter(QueueMember.queue_id == queue.queue_id,
-                      QueueMember.user_id == user_id).first())
-    if member is not None:
-        logger.info("Already in the queue.")
-        update.effective_message.reply_text(**already_in_the_queue())
-        return
-
-    last_member: QueueMember = (
-        session
-            .query(QueueMember)
-            .filter(QueueMember.queue_id == queue.queue_id)
-            .order_by(QueueMember.user_order.desc())
-            .first()
-    )
-    if last_member is None:
-        user_order = 1
-    else:
-        user_order = last_member.user_order + 1
-    member = QueueMember(user_id=user_id, fullname=update.effective_user.full_name,
-                         user_order=user_order, queue_id=queue.queue_id)
-    session.add(member)
-    session.commit()
-    logger.info(f"Added member to queue: \n\t{member}")
-
-    __edit_queue_members_message(queue, chat_id, context.bot)
+    add_me_action(update, queue, context.bot)
 
 
 @log_command('remove_me')
@@ -267,46 +244,8 @@ def add_me_command(update: Update, context: CallbackContext, queue: Queue):
     on_not_exist_log='Removing from nonexistent queue',
     on_no_queue_reply=command_empty_queue_name(command_name='remove_me')
 )
-def remove_me_command(update: Update, context: CallbackContext, queue):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-
-    session = create_session()
-    member: QueueMember = (session
-                           .query(QueueMember)
-                           .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_id == user_id)
-                           .first())
-    if member is None:
-        logger.info('Not yet in the queue')
-        update.effective_message.reply_text(**not_in_the_queue_yet())
-    else:
-        # If it was the last member return turn to the previous one
-        last_member: QueueMember = (
-            session
-                .query(QueueMember)
-                .filter(QueueMember.queue_id == queue.queue_id)
-                .order_by(QueueMember.user_order.desc())
-                .first()
-        )
-        if queue.current_order == last_member.user_order:
-            queue.current_order = queue.current_order - 1
-            session.add(queue)
-            logger.info(f'Updated current_order in queue: \n\t{queue}')
-
-        session.delete(member)
-        # Updating user_order in queue_members table
-        # to move down all users with user_order greater than the value of deleted user
-        update_stmt: TextClause = text('UPDATE queue_member '
-                                       'SET user_order = user_order - 1 '
-                                       'WHERE user_order > :deleted_user_order;')
-        session.execute(update_stmt, {'deleted_user_order': member.user_order})
-
-        session.commit()
-
-        logger.info(f'User removed from queue (queue_id={queue.queue_id})')
-        logger.info(f'Updated user_order in queue({queue.queue_id}) for users(order>{member.user_order})')
-
-        __edit_queue_members_message(queue, chat_id, context.bot)
+def remove_me_command(update: Update, context: CallbackContext, queue: Queue):
+    remove_me_action(update, queue, context.bot)
 
 
 @log_command('skip_me')
@@ -317,36 +256,7 @@ def remove_me_command(update: Update, context: CallbackContext, queue):
     on_no_queue_reply=command_empty_queue_name('skip_me')
 )
 def skip_me_command(update: Update, context: CallbackContext, queue):
-    chat_id = update.effective_chat.id
-    session = create_session()
-
-    member: QueueMember = (
-        session
-            .query(QueueMember)
-            .filter(QueueMember.queue_id == queue.queue_id,
-                    QueueMember.user_id == update.effective_user.id)
-            .first())
-    if member is None:
-        logger.info('Not yet in the queue')
-        update.effective_message.reply_text(**not_in_the_queue_yet())
-    else:
-        next_member: QueueMember = (
-            session
-                .query(QueueMember)
-                .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_order == member.user_order + 1)
-                .first()
-        )
-        if next_member is not None:
-            member.user_order = member.user_order + 1
-            next_member.user_order = next_member.user_order - 1
-            session.add_all([member, next_member])
-            session.commit()
-            logger.info(f'Skip queue_member({member.user_id}) in the queue({queue.queue_id})')
-
-            __edit_queue_members_message(queue, chat_id, context.bot)
-        else:
-            logging.info(f'Cancel skipping because of no other members in queue({queue.queue_id})')
-            update.effective_message.reply_text(**cannot_skip())
+    skip_me_action(update, queue, context.bot)
 
 
 @log_command('next')
@@ -357,28 +267,7 @@ def skip_me_command(update: Update, context: CallbackContext, queue):
     on_no_queue_reply=command_empty_queue_name('next')
 )
 def next_command(update: Update, context: CallbackContext, queue):
-    order = queue.current_order + 1
-    queue.current_order = order
-
-    session = create_session()
-    member: QueueMember = (
-        session
-            .query(QueueMember)
-            .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_order == queue.current_order)
-            .first()
-    )
-    if member is None:
-        logger.info(f"Reached the end of the queue({queue.queue_id})")
-        update.effective_chat.send_message(**next_reached_queue_end())
-    else:
-        logging.info(f'Next member: {member}')
-        update.effective_chat.send_message(**next_member_notify(member.fullname, member.user_id, queue.name))
-
-        session.merge(queue)
-        session.commit()
-        logger.info(f'Updated current_order: \n\t{queue}')
-
-        __edit_queue_members_message(queue, update.effective_chat.id, context.bot)
+    next_action(update, queue, context.bot)
 
 
 @log_command('show_members')

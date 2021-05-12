@@ -7,6 +7,7 @@ from telegram import Bot, Update, BotCommand
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext, ConversationHandler
 
 import app_logging
+from bot.callbacks.callback_setup import setup_callbacks
 from bot.chat_type_accepted import private_only_handler
 from bot.constants import BOT_TOKEN, BOT_VERSION
 from bot.handlers.chat_status_handlers import (
@@ -69,6 +70,9 @@ def setup():
     dispatcher.add_handler(CommandHandler('help', help_command))
     dispatcher.add_handler(CommandHandler('about_me', about_me_command))
 
+    # Inline buttons handlers setup
+    setup_callbacks(dispatcher)
+
     # Registering conversation handlers here
 
     # Handler for the reports functionality
@@ -83,8 +87,6 @@ def setup():
         fallbacks=[MessageHandler(Filters.text(cancel_keyboard_button), cancel_handler)],
         per_user=True
     ))
-
-    # Registering handlers here #
 
     # Handlers for adding to a group, removing from a group, creating a new group with the bot in it
     # and updating the group to the supergroup

@@ -180,6 +180,16 @@ def command_empty_queue_name(command_name: str, lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
+def callback_empty_queue_id(command_name: str, lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ("Something went wrong with with this button. Try to use command instead.\n"
+                f"Usage: `/{command_name} <name>`")
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
 def already_in_the_queue(lang: str = 'en'):
     text: str
     if lang == 'en':

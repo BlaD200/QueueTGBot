@@ -11,6 +11,7 @@ from app_logging import get_logger
 logger = get_logger(__name__)
 
 
+# TODO Rename
 def log_command(command_name: str = None):
     """
     Designed to be a decorator.
@@ -29,9 +30,11 @@ def log_command(command_name: str = None):
             chat_name = update.effective_chat.title
             user_id = update.effective_user.id
             chat_type = update.effective_chat.type
-            args = ' '.join(context.args) if context.args is not None else update.effective_message.text
+            query_data = update.callback_query.data if update.callback_query else None
+            args = f"\'{''.join(context.args)}\'" if context.args is not None else repr(update.effective_message.text)
             info = f"chat_type: '{chat_type}', " \
-                   f"chat_id: '{chat_id}', chat_name: '{chat_name}', user: '{user_id}', args: '{args}'"
+                   f"chat_id: '{chat_id}', chat_name: '{chat_name}', user: '{user_id}', args: '{args}', " \
+                   f"callback_data: '{query_data}'"
             _command_name = command_name if command_name is not None else update.effective_message.text.split(' ')[0]
             if update.edited_message:
                 logger.info(f"{_command_name}: [{info}] edited")

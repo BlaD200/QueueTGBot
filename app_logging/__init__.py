@@ -25,10 +25,10 @@ def get_logger(name: str) -> logging.Logger:
     logger.setLevel(logging.INFO)
 
     logger.addHandler(__get_stream_handler())
-    if __log_config.bot:
-        logger.addHandler(__log_config.bot_cashing_handler)
+    # if __log_config.bot:
+    #     logger.addHandler(__log_config.bot_cashing_handler)
 
-    __log_config.add_logger(logger)
+    # __log_config.add_logger(logger)
 
     return logger
 
