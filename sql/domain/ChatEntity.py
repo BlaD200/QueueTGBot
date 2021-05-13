@@ -15,6 +15,7 @@ class Chat(Base):
     chat_id = Column(BigInteger, primary_key=True, nullable=False, unique=True)
     name = Column(String, nullable=False)
     notify = Column(BOOLEAN, nullable=False, default=True)
+    language = Column(String, nullable=False, default="en")
 
     created_at = Column(TIMESTAMP, nullable=False, default=datetime.now())
 
