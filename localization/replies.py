@@ -159,6 +159,15 @@ def show_queue_members(queue_name: str, members: List[str] = None, current_membe
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
 
 
+def cancel_notify_next_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = 'Okay, no one will be notified.'
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
 def show_queues_message_empty(lang: str = 'en'):
     text: str
     if lang == 'en':

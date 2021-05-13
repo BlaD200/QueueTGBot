@@ -7,6 +7,7 @@ from telegram.error import BadRequest
 
 from app_logging import get_logger
 from bot.callbacks.message_buttons import get_member_action_buttons
+from bot.constants import CACHE_TIME
 from localization.replies import already_in_the_queue, show_queue_members, not_in_the_queue_yet, next_reached_queue_end, \
     next_member_notify, cannot_skip
 from sql import create_session
@@ -20,7 +21,6 @@ def add_me_action(update: Update, queue: Queue, bot: Bot):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     queue_id = queue.queue_id
-    reply_markup = update.effective_message.reply_markup
 
     session = create_session()
     member = (session
@@ -30,7 +30,7 @@ def add_me_action(update: Update, queue: Queue, bot: Bot):
     if member is not None:
         logger.info("Already in the queue.")
         if update.callback_query:
-            update.callback_query.answer(**already_in_the_queue(), cache_time=5)
+            update.callback_query.answer(**already_in_the_queue(), cache_time=CACHE_TIME)
         else:
             # TODO add silence setting
             update.effective_message.reply_text(**already_in_the_queue())
@@ -53,7 +53,7 @@ def add_me_action(update: Update, queue: Queue, bot: Bot):
     session.commit()
     logger.info(f"Added member to queue: \n\t{member}")
 
-    __edit_queue_members_message(queue, chat_id, reply_markup, bot)
+    __edit_queue_members_message(queue, chat_id, bot)
     if update.callback_query:
         update.callback_query.answer()
 
@@ -61,7 +61,6 @@ def add_me_action(update: Update, queue: Queue, bot: Bot):
 def remove_me_action(update: Update, queue: Queue, bot: Bot):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
-    reply_markup = update.effective_message.reply_markup
 
     session = create_session()
     member: QueueMember = (session
@@ -71,7 +70,7 @@ def remove_me_action(update: Update, queue: Queue, bot: Bot):
     if member is None:
         logger.info('Not yet in the queue')
         if update.callback_query:
-            update.callback_query.answer(**not_in_the_queue_yet(), cache_time=5)
+            update.callback_query.answer(**not_in_the_queue_yet(), cache_time=CACHE_TIME)
         else:
             # TODO add silence setting
             update.effective_message.reply_text(**not_in_the_queue_yet())
@@ -86,7 +85,7 @@ def remove_me_action(update: Update, queue: Queue, bot: Bot):
         )
         if queue.current_order == last_member.user_order:
             queue.current_order = queue.current_order - 1
-            session.add(queue)
+            session.merge(queue)
             logger.info(f'Updated current_order in queue: \n\t{queue}')
 
         session.delete(member)
@@ -102,7 +101,7 @@ def remove_me_action(update: Update, queue: Queue, bot: Bot):
         logger.info(f'User removed from queue (queue_id={queue.queue_id})')
         logger.info(f'Updated user_order in queue({queue.queue_id}) for users(order>{member.user_order})')
 
-        __edit_queue_members_message(queue, chat_id, reply_markup, bot)
+        __edit_queue_members_message(queue, chat_id, bot)
         if update.callback_query:
             update.callback_query.answer()
 
@@ -121,7 +120,7 @@ def skip_me_action(update: Update, queue: Queue, bot: Bot):
     if member is None:
         logger.info('Not yet in the queue')
         if update.callback_query:
-            update.callback_query.answer(**not_in_the_queue_yet(), cache_time=5)
+            update.callback_query.answer(**not_in_the_queue_yet(), cache_time=CACHE_TIME)
         else:
             # TODO add silence setting
             update.effective_message.reply_text(**not_in_the_queue_yet())
@@ -139,13 +138,13 @@ def skip_me_action(update: Update, queue: Queue, bot: Bot):
             session.commit()
             logger.info(f'Skip queue_member({member.user_id}) in the queue({queue.queue_id})')
 
-            __edit_queue_members_message(queue, chat_id, reply_markup, bot)
+            __edit_queue_members_message(queue, chat_id, bot)
             if update.callback_query:
                 update.callback_query.answer()
         else:
             logger.info(f'Cancel skipping because of no other members in queue({queue.queue_id})')
             if update.callback_query:
-                update.callback_query.answer(**cannot_skip(), cache_time=5)
+                update.callback_query.answer(**cannot_skip(), cache_time=CACHE_TIME)
             else:
                 # TODO add silence setting
                 update.effective_message.reply_text(**cannot_skip())
@@ -166,7 +165,7 @@ def next_action(update: Update, queue: Queue, bot: Bot):
     if member is None:
         logger.info(f"Reached the end of the queue({queue.queue_id})")
         if update.callback_query:
-            update.callback_query.answer(**next_reached_queue_end(), cache_time=5)
+            update.callback_query.answer(**next_reached_queue_end(), cache_time=CACHE_TIME)
         else:
             # TODO add silence setting
             update.effective_message.reply_text(**next_reached_queue_end())
@@ -178,7 +177,7 @@ def next_action(update: Update, queue: Queue, bot: Bot):
         session.commit()
         logger.info(f'Updated current_order: \n\t{queue}')
 
-        __edit_queue_members_message(queue, update.effective_chat.id, reply_markup, bot)
+        __edit_queue_members_message(queue, update.effective_chat.id, bot)
     if update.callback_query:
         update.callback_query.answer()
 
@@ -204,14 +203,14 @@ def show_queue_members_action(chat_id: int, queue: Queue, bot):
         logger.info(f'Updated message_to_edit_id in queue:\n\t{queue}')
 
 
-def __edit_queue_members_message(queue: Queue, chat_id: int, reply_markup, bot):
+def __edit_queue_members_message(queue: Queue, chat_id: int, bot):
     member_names = __get_queue_members(queue)
 
     try:
         bot.edit_message_text(
             chat_id=chat_id,
             message_id=queue.message_id_to_edit,
-            reply_markup=reply_markup,
+            **get_member_action_buttons(queue.queue_id),
             **show_queue_members(queue.name, member_names, queue.current_order)
         )
     except BadRequest as e:

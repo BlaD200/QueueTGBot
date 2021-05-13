@@ -6,6 +6,7 @@ from telegram.ext import CallbackContext
 
 from app_logging import get_logger
 from app_logging.handler_logging import log_command
+from bot.constants import CACHE_TIME
 from bot.controller.member_controller import add_me_action, remove_me_action, skip_me_action, \
     next_action
 from localization.replies import deleted_queue_message, callback_empty_queue_id
@@ -34,10 +35,10 @@ def __insert_queue_from_callback_data(on_no_queue_log: str, on_not_exist_log: st
             # The id was specified but queue with this id wasn't found in DB
             elif not queue and data['queue_id']:
                 logger.info(on_not_exist_log)
-                update.callback_query.answer(**deleted_queue_message(), cache_time=5)
+                update.callback_query.answer(**deleted_queue_message(), cache_time=CACHE_TIME)
             else:
                 logger.warning(on_no_queue_log)
-                update.callback_query.answer(**on_no_queue_reply, cache_time=5)
+                update.callback_query.answer(**on_no_queue_reply, cache_time=CACHE_TIME)
 
         return insert_queue_from_callback_data_wrapper
 

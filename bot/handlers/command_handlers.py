@@ -23,7 +23,7 @@ from localization.replies import (
     queue_not_exist, show_queues_message_empty,
     show_queues_message, command_empty_queue_name, reply_to_wrong_message_message,
     notify_all_disabled_message, notify_all_enabled_message, enter_queue_name_message,
-    cancel_queue_creation_message
+    cancel_queue_creation_message, cancel_queue_deletion_message, cancel_notify_next_message
 )
 from sql import create_session
 from sql.domain import *
@@ -214,7 +214,7 @@ def delete_queue_name_handler(update: Update, context: CallbackContext):
 def cancel_queue_deletion_handler(update: Update, context: CallbackContext) -> int:
     """Handler for the ``cancel_keyboard_button`` button."""
     logger.info(f'Queue deletion was cancelled by the user({update.effective_user.id})')
-    update.effective_message.reply_text(**cancel_queue_creation_message(),
+    update.effective_message.reply_text(**cancel_queue_deletion_message(),
                                         reply_markup=ReplyKeyboardRemove(selective=True))
 
     return ConversationHandler.END
@@ -254,7 +254,7 @@ def show_queue_members_name_handler(update: Update, context: CallbackContext):
     session = create_session()
     queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
     if queue is None:
-        logger.info("Deletion nonexistent queue.")
+        logger.info("Show members command for nonexistent queue.")
         update.effective_message.reply_text(
             **queue_not_exist(queue_name=queue_name),
             reply_markup=ReplyKeyboardRemove(selective=True)
@@ -268,7 +268,7 @@ def show_queue_members_name_handler(update: Update, context: CallbackContext):
 
 def cancel_show_queue_members_handler(update: Update, context: CallbackContext) -> int:
     """Handler for the ``cancel_keyboard_button`` button."""
-    logger.info(f'Queue deletion was cancelled by the user({update.effective_user.id})')
+    logger.info(f'Show members command was cancelled by the user({update.effective_user.id})')
     update.effective_message.reply_text(**cancel_queue_creation_message(),
                                         reply_markup=ReplyKeyboardRemove(selective=True))
 
@@ -329,7 +329,49 @@ def skip_me_command(update: Update, context: CallbackContext, queue):
     on_no_queue_reply=command_empty_queue_name('next')
 )
 def next_command(update: Update, context: CallbackContext, queue):
-    next_action(update, queue, context.bot)
+    if not queue:
+        queue_names = _get_all_queues_for_chat(update.effective_chat.id)
+        keyboard = _form_queue_names_list_for_keyboard(queue_names)
+        keyboard.append([get_cancel_button_text()])
+
+        update.effective_message.reply_text(
+            **enter_queue_name_message(),
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard,
+                one_time_keyboard=True, resize_keyboard=True, selective=True),
+        )
+        return ENTER_QUEUE_NAME_STATE
+    else:
+        next_action(update, queue, context.bot)
+        return ConversationHandler.END
+
+
+def notify_next_member_queue_name_handler(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    queue_name = update.effective_message.text
+
+    session = create_session()
+    queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+    if queue is None:
+        logger.info("Notify next member command for nonexistent queue.")
+        update.effective_message.reply_text(
+            **queue_not_exist(queue_name=queue_name),
+            reply_markup=ReplyKeyboardRemove(selective=True)
+        )
+    else:
+        queue_name = update.effective_message.text
+        queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+        next_action(update, queue, context.bot)
+        return ConversationHandler.END
+
+
+def cancel_notify_next_member_queue_name_handler(update: Update, context: CallbackContext) -> int:
+    """Handler for the ``cancel_keyboard_button`` button."""
+    logger.info(f'Notify next member command was cancelled by the user({update.effective_user.id})')
+    update.effective_message.reply_text(**cancel_notify_next_message(),
+                                        reply_markup=ReplyKeyboardRemove(selective=True))
+
+    return ConversationHandler.END
 
 
 @log_command('notify_all')
