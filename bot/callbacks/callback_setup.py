@@ -1,7 +1,8 @@
 from telegram.ext import Dispatcher, CallbackQueryHandler
 
-from bot.callbacks.callback_data_actions import ADD_ME, REMOVE_ME, SKIP_ME, NEXT
-from bot.callbacks.callback_handlers import add_me_callback, remove_me_callback, skip_me_callback, next_callback
+from bot.callbacks.callback_data_actions import ADD_ME, REMOVE_ME, SKIP_ME, NEXT, NOTIFY
+from bot.callbacks.callback_handlers import add_me_callback, remove_me_callback, skip_me_callback, next_callback, \
+    pin_queue_callback
 
 
 def setup_callbacks(dispatcher: Dispatcher):
@@ -17,3 +18,6 @@ def setup_callbacks(dispatcher: Dispatcher):
 
     dispatcher.add_handler(CallbackQueryHandler(next_callback,
                                                 pattern=rf'^.*([\'"]action[\'"]:\s*{NEXT}).*$'))
+
+    dispatcher.add_handler(CallbackQueryHandler(pin_queue_callback,
+                                                pattern=rf'^.*([\'"]action[\'"]:\s*{NOTIFY}).*$'))

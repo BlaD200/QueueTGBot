@@ -235,6 +235,16 @@ def callback_empty_queue_id(command_name: str, lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
+def callback_empty_queue_id__for_pin(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ("Something went wrong with with this button. Pin message manually, please, or use "
+                "type `/notify_all` and create a new queue.")
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
 def already_in_the_queue(lang: str = 'en'):
     text: str
     if lang == 'en':
