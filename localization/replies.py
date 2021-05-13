@@ -183,7 +183,7 @@ def command_empty_queue_name(command_name: str, lang: str = 'en'):
 def enter_queue_name_message(lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = 'Enter the name of the queue: '
+        text = 'Enter the name of the queue:'
     else:
         text = "TODO"
     return {'text': text}

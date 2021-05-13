@@ -5,27 +5,25 @@ import logging
 from typing import Optional, List, Callable, Any
 
 from sqlalchemy.orm import joinedload
-from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup, InlineKeyboardMarkup
-from telegram.error import BadRequest
+from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import CallbackContext, ConversationHandler
 
 import app_logging
 from app_logging.handler_logging import log_command
-from bot.callbacks.message_buttons import show_members_buttons
 from bot.chat_type_accepted import group_only_handler
 from bot.controller.member_controller import add_me_action, remove_me_action, next_action, \
-    skip_me_action
+    skip_me_action, show_queue_members_action
+from bot.controller.queue_controller import create_queue_action, delete_queue_action
 from localization.keyboard_buttons import get_cancel_button_text
 from localization.replies import (
     start_message_private, start_message_chat,
     unknown_command, unimplemented_command,
-    create_queue_exist, help_message_private, help_message_in_chat,
+    help_message_private, help_message_in_chat,
     about_me_message,
-    unexpected_error, queue_not_exist, deleted_queue_message, show_queues_message_empty,
-    show_queues_message, command_empty_queue_name, show_queue_members, no_rights_to_pin_message,
-    reply_to_wrong_message_message,
-    no_rights_to_unpin_message, notify_all_disabled_message, notify_all_enabled_message, enter_queue_name_message,
-    cancel_queue_creation_message, queue_created_remove_keyboard_message
+    queue_not_exist, show_queues_message_empty,
+    show_queues_message, command_empty_queue_name, reply_to_wrong_message_message,
+    notify_all_disabled_message, notify_all_enabled_message, enter_queue_name_message,
+    cancel_queue_creation_message
 )
 from sql import create_session
 from sql.domain import *
@@ -35,7 +33,8 @@ from sql.domain import *
 logger: logging.Logger = app_logging.get_logger(__name__)
 
 
-def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_no_queue_reply: dict):
+def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str,
+                                on_no_queue_reply: dict, pass_if_no_queue: bool = False):
     """
     Decorator function.
 
@@ -43,15 +42,18 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_
     or using the name specified in the command args.
 
     * If the user replied to the message not generated for the queue
-    (stored as ``message_id_to_edit`` in the :class:`Queue` class),
-    the bot will reply with ``reply_to_wrong_message_message``.
+      (stored as ``message_id_to_edit`` in the :class:`Queue` class),
+      the bot will reply with ``reply_to_wrong_message_message`` and exit.
 
     * If the user specified nonexistent name in command args,
-    the bot will reply with ``queue_not_exist``
+      the bot will reply with ``queue_not_exist`` and exit.
 
     * If the user didn't reply to the message, generated for the queue,
-    and didn't specify the queue name in the command arguments,
-    the bot will reply with ``on_no_queue_reply``
+      and didn't specify the queue name in the command arguments,
+      the bot will reply with ``on_no_queue_reply`` and exit.
+
+    * If no queue can be got from the context and ``pass_if_no_queue`` is set to True,
+      the decorated function wil be called with ``queue=None`` parameter
 
     Otherwise, the decorated function will be called with
     (:class:`telegram.Update`, :class:`telegram.CallbackContext`, :class:`Queue`) parameters.
@@ -59,6 +61,7 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_
     :param on_no_queue_log: given message will be logged, if the <b>third</b> condition is met
     :param on_not_exist_log: given message will be logged, if the <b>second</b> condition is met
     :param on_no_queue_reply: if the third condition is met, the bot will reply with this message.
+    :param pass_if_no_queue: if ``True``
     Have to be in the format, used in ``replies`` module.
 
     See Also:
@@ -96,12 +99,14 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str, on_
                          .filter(Queue.chat_id == chat_id, Queue.name == queue_name)
                          .options(joinedload(Queue.members))
                          .first())
-            if queue:
-                return command_handler_function(update, context, queue)
+
             # The name was specified but queue with this name wasn't found in DB
-            elif not queue and context.args:
+            if not queue and context.args:
                 logger.info(on_not_exist_log)
                 update.effective_message.reply_text(**queue_not_exist(queue_name=queue_name))
+            # The queue was found or pass_if_no_queue was set to True
+            elif queue or pass_if_no_queue:
+                return command_handler_function(update, context, queue)
             else:
                 logger.info(on_no_queue_log)
                 update.effective_message.reply_text(**on_no_queue_reply)
@@ -133,7 +138,7 @@ def start_command(update: Update, context: CallbackContext):
 
 
 ### CREATE QUEUE ###
-QUEUE_NAME = 1
+ENTER_QUEUE_NAME_STATE = 1
 
 
 @log_command('create_queue')
@@ -151,7 +156,7 @@ def create_queue_command(update: Update, context: CallbackContext):
                 [[get_cancel_button_text()]],
                 one_time_keyboard=True, resize_keyboard=True, selective=True),
         )
-        return QUEUE_NAME
+        return ENTER_QUEUE_NAME_STATE
 
     else:
         create_queue_action(update, queue_name, context.bot)
@@ -174,54 +179,6 @@ def cancel_queue_creation_handler(update: Update, context: CallbackContext) -> i
     return ConversationHandler.END
 
 
-def create_queue_action(update: Update, queue_name: str, bot):
-    chat_id = update.effective_chat.id
-
-    session = create_session()
-    count = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).count()
-    if count == 1:
-        logger.info("Creating a queue with an existing name")
-        update.effective_message.reply_text(
-            **create_queue_exist(queue_name=queue_name), reply_markup=ReplyKeyboardRemove(selective=True)
-        )
-    else:
-        queue = Queue(name=queue_name, chat_id=chat_id)
-        message = None
-        try:
-            session.add(queue)
-            session.commit()
-
-            message = update.effective_chat.send_message(**show_members_buttons(queue.queue_id, queue_name))
-
-            queue.message_id_to_edit = message.message_id
-            session.merge(queue)
-            session.commit()
-
-            logger.info(f"New queue created: \n\t{queue}")
-
-            # Send the reply to hide the keyboard for the user if one was present
-            if update.effective_message.reply_markup:
-                message = update.effective_message.reply_text(
-                    **queue_created_remove_keyboard_message(),
-                    reply_markup=ReplyKeyboardRemove(selective=True)
-                )
-                message.delete()
-
-            # Checking if the bot has rights to pin the message.
-            if bot.get_chat_member(chat_id, bot.id).can_pin_messages:
-                if queue.chat.notify:
-                    message.pin()
-            # If the message should be pinned, but the bot hasn't got rights.
-            elif queue.chat.notify:
-                update.effective_chat.send_message(**no_rights_to_pin_message())
-        except Exception as e:
-            logger.exception(f"ERROR when creating queue: \n\t{queue} "
-                             f"with message: \n{e}")
-            update.effective_chat.send_message(**unexpected_error())
-            if message:
-                message.delete()
-
-
 ####################
 
 
@@ -232,16 +189,17 @@ def delete_queue_command(update: Update, context: CallbackContext):
 
     queue_name = ' '.join(context.args)
     if not queue_name:
-        # TODO suggest all queues in the keyboard
-        # logger.info("Deletion a queue with empty name.")
-        # update.effective_chat.send_message(**delete_queue_empty_name())
+        queue_names = _get_all_queues_for_chat(update.effective_chat.id)
+        keyboard = _form_queue_names_list_for_keyboard(queue_names)
+        keyboard.append([get_cancel_button_text()])
+
         update.effective_message.reply_text(
             **enter_queue_name_message(),
             reply_markup=ReplyKeyboardMarkup(
-                [[get_cancel_button_text()]],
+                keyboard,
                 one_time_keyboard=True, resize_keyboard=True, selective=True),
         )
-        return QUEUE_NAME
+        return ENTER_QUEUE_NAME_STATE
     else:
         delete_queue_action(update, queue_name, context.bot)
         return ConversationHandler.END
@@ -262,46 +220,59 @@ def cancel_queue_deletion_handler(update: Update, context: CallbackContext) -> i
     return ConversationHandler.END
 
 
-def delete_queue_action(update: Update, queue_name: str, bot):
+@log_command('show_members')
+@group_only_handler
+@__insert_queue_from_context(
+    on_no_queue_log='Requested "show_members" command with the empty queue name',
+    on_not_exist_log='Requested "show_members" with an nonexistent queue name.',
+    on_no_queue_reply=command_empty_queue_name('show_members'),
+    pass_if_no_queue=True
+)
+def show_members_command(update: Update, context: CallbackContext, queue):
+    """Handler for '/show_members <queue_name>' command"""
+    if not queue:
+        queue_names = _get_all_queues_for_chat(update.effective_chat.id)
+        keyboard = _form_queue_names_list_for_keyboard(queue_names)
+        keyboard.append([get_cancel_button_text()])
+
+        update.effective_message.reply_text(
+            **enter_queue_name_message(),
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard,
+                one_time_keyboard=True, resize_keyboard=True, selective=True),
+        )
+        return ENTER_QUEUE_NAME_STATE
+    else:
+        show_queue_members_action(update.effective_chat.id, queue, context.bot)
+        return ConversationHandler.END
+
+
+def show_queue_members_name_handler(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
+    queue_name = update.effective_message.text
 
     session = create_session()
     queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
     if queue is None:
         logger.info("Deletion nonexistent queue.")
-        update.effective_chat.send_message(
+        update.effective_message.reply_text(
             **queue_not_exist(queue_name=queue_name),
             reply_markup=ReplyKeyboardRemove(selective=True)
         )
     else:
-        session.delete(queue)
-        session.commit()
-        logger.info(f"Deleted queue: \n\t{queue}")
-        # TODO silent
-        update.effective_message.reply_text(
-            **deleted_queue_message(),
-            reply_markup=ReplyKeyboardRemove(selective=True)
-        )
+        queue_name = update.effective_message.text
+        queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+        show_queue_members_action(update.effective_chat.id, queue, context.bot)
+        return ConversationHandler.END
 
-        if bot.get_chat_member(chat_id, bot.id).can_pin_messages:
-            try:
-                bot.unpin_chat_message(chat_id, message_id=queue.message_id_to_edit)
-            except BadRequest as e:
-                logger.warning(f"ERROR when tried to unpin "
-                               f"message({queue.message_id_to_edit}) in queue({queue.queue_id}):\n\t"
-                               f"{e}")
-            try:
-                bot.edit_message_text(
-                    **show_queue_members(queue_name),
-                    chat_id=chat_id,
-                    message_id=queue.message_id_to_edit,
-                    reply_markup=InlineKeyboardMarkup([]))
-            except BadRequest as e:
-                logger.warning(f"ERROR when tried to remove callback buttons for "
-                               f"the message({queue.message_id_to_edit}) in the queue({queue.queue_id}):\n\t"
-                               f"{e}")
-        else:
-            update.effective_chat.send_message(**no_rights_to_unpin_message())
+
+def cancel_show_queue_members_handler(update: Update, context: CallbackContext) -> int:
+    """Handler for the ``cancel_keyboard_button`` button."""
+    logger.info(f'Queue deletion was cancelled by the user({update.effective_user.id})')
+    update.effective_message.reply_text(**cancel_queue_creation_message(),
+                                        reply_markup=ReplyKeyboardRemove(selective=True))
+
+    return ConversationHandler.END
 
 
 @log_command('show_queues')
@@ -310,12 +281,10 @@ def show_queues_command(update: Update, context: CallbackContext):
     """Handler for '/show_queues' command"""
 
     chat_id = update.effective_chat.id
-    session = create_session()
-    queues = session.query(Queue).filter(Queue.chat_id == chat_id).all()
-    if not queues:
+    queue_names = _get_all_queues_for_chat(chat_id)
+    if not queue_names:
         update.effective_chat.send_message(**show_queues_message_empty())
     else:
-        queue_names = [queue.name for queue in queues]
         update.effective_chat.send_message(**show_queues_message(queue_names))
 
 
@@ -361,17 +330,6 @@ def skip_me_command(update: Update, context: CallbackContext, queue):
 )
 def next_command(update: Update, context: CallbackContext, queue):
     next_action(update, queue, context.bot)
-
-
-@log_command('show_members')
-@group_only_handler
-@__insert_queue_from_context(
-    on_no_queue_log='Requested "show_members" command with the empty queue name',
-    on_not_exist_log='Requested "show_members" with an nonexistent queue name.',
-    on_no_queue_reply=command_empty_queue_name('show_members')
-)
-def show_members_command(update: Update, context: CallbackContext, queue):
-    __show_members(update.effective_chat.id, queue, context.bot)
 
 
 @log_command('notify_all')
@@ -425,24 +383,25 @@ def unimplemented_command_handler(update: Update, context: CallbackContext):
     update.message.reply_text(**unimplemented_command())
 
 
-def __show_members(chat_id: int, queue: Queue, bot):
-    member_names = __get_queue_members(queue)
-    message = bot.send_message(
-        chat_id=chat_id,
-        **show_queue_members(queue.name, member_names, queue.current_order)
-    )
-    if message:
-        try:
-            bot.delete_message(chat_id=chat_id, message_id=queue.message_id_to_edit)
-        except BadRequest as e:
-            logger.exception(f'Error when deleting the previously sent message: {e}')
-        queue.message_id_to_edit = message.message_id
+def _get_all_queues_for_chat(chat_id: int) -> Optional[List[str]]:
+    session = create_session()
+    queues = session.query(Queue).filter(Queue.chat_id == chat_id).all()
+    if queues:
+        return [queue.name for queue in queues]
+    return None
 
-        session = create_session()
-        session.add(queue)
-        session.commit()
 
-        logger.info(f'Updated message_to_edit_id in queue:\n\t{queue}')
+def _form_queue_names_list_for_keyboard(queue_names: List[str]) -> List[List[str]]:
+    queue_names = sorted(queue_names, key=len)
+    keyboard = [[]]
+    for queue_name in queue_names:
+        if len(queue_name) < 10:
+            last_row = keyboard[-1]
+            if len(last_row) < 2:
+                last_row.append(queue_name)
+                continue
+        keyboard.append([queue_name])
+    return keyboard
 
 
 def __get_queue_members(queue: Queue) -> List[str]:
@@ -457,22 +416,22 @@ def __get_queue_members(queue: Queue) -> List[str]:
     return member_names
 
 
-def __edit_queue_members_message(queue: Queue, chat_id: int, bot):
-    member_names = __get_queue_members(queue)
-
-    try:
-        bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=queue.message_id_to_edit,
-            **show_queue_members(queue.name, member_names, queue.current_order)
-        )
-    except BadRequest as e:
-        logger.exception(f'ERROR when editing the message({queue.message_id_to_edit}) for queue({queue.queue_id}): \n\t'
-                         f'{e}')
-        logger.warning(f'Sending a new message for the queue({queue.queue_id}) because of the previous error.')
-
-        __show_members(chat_id, queue, bot)
-    logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
+# def __edit_queue_members_message(queue: Queue, chat_id: int, bot):
+#     member_names = __get_queue_members(queue)
+#
+#     try:
+#         bot.edit_message_text(
+#             chat_id=chat_id,
+#             message_id=queue.message_id_to_edit,
+#             **show_queue_members(queue.name, member_names, queue.current_order)
+#         )
+#     except BadRequest as e:
+#         logger.exception(f'ERROR when editing the message({queue.message_id_to_edit}) for queue({queue.queue_id}): \n\t'
+#                          f'{e}')
+#         logger.warning(f'Sending a new message for the queue({queue.queue_id}) because of the previous error.')
+#
+#         show_queue_members_action(chat_id, queue, bot)
+#     logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
 
 
 __all__ = [

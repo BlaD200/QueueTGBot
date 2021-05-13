@@ -22,8 +22,9 @@ from bot.handlers.command_handlers import (
     help_command,
     about_me_command,
     unsupported_command_handler, add_me_command, remove_me_command, skip_me_command, next_command, notify_all_command,
-    show_members_command, cancel_queue_creation_handler, QUEUE_NAME, create_queue_name_handler,
-    delete_queue_name_handler, cancel_queue_deletion_handler
+    show_members_command, cancel_queue_creation_handler, ENTER_QUEUE_NAME_STATE, create_queue_name_handler,
+    delete_queue_name_handler, cancel_queue_deletion_handler, show_queue_members_name_handler,
+    cancel_show_queue_members_handler
 )
 from bot.handlers.error_handler import error_handler
 from bot.handlers.report_handler import report_command, DESCRIPTION, description_handler, \
@@ -61,7 +62,7 @@ def setup():
     dispatcher.add_handler(ConversationHandler(
         entry_points=[CommandHandler('create_queue', create_queue_command)],
         states={
-            QUEUE_NAME: [
+            ENTER_QUEUE_NAME_STATE: [
                 MessageHandler(Filters.text & ~Filters.text(cancel_keyboard_button), create_queue_name_handler)]
         },
         fallbacks=[MessageHandler(Filters.text(cancel_keyboard_button), cancel_queue_creation_handler)]
@@ -70,10 +71,19 @@ def setup():
     dispatcher.add_handler(ConversationHandler(
         entry_points=[CommandHandler('delete_queue', delete_queue_command)],
         states={
-            QUEUE_NAME: [
+            ENTER_QUEUE_NAME_STATE: [
                 MessageHandler(Filters.text & ~Filters.text(cancel_keyboard_button), delete_queue_name_handler)]
         },
         fallbacks=[MessageHandler(Filters.text(cancel_keyboard_button), cancel_queue_deletion_handler)]
+    ))
+    # dispatcher.add_handler(CommandHandler('show_members', show_members_command))
+    dispatcher.add_handler(ConversationHandler(
+        entry_points=[CommandHandler('show_members', show_members_command)],
+        states={
+            ENTER_QUEUE_NAME_STATE: [
+                MessageHandler(Filters.text & ~Filters.text(cancel_keyboard_button), show_queue_members_name_handler)]
+        },
+        fallbacks=[MessageHandler(Filters.text(cancel_keyboard_button), cancel_show_queue_members_handler)]
     ))
     dispatcher.add_handler(CommandHandler('show_queues', show_queues_command))
     dispatcher.add_handler(CommandHandler('notify_all', notify_all_command))
@@ -82,7 +92,6 @@ def setup():
     dispatcher.add_handler(CommandHandler('remove_me', remove_me_command))
     dispatcher.add_handler(CommandHandler('skip_me', skip_me_command))
     dispatcher.add_handler(CommandHandler('next', next_command))
-    dispatcher.add_handler(CommandHandler('show_members', show_members_command))
 
     dispatcher.add_handler(CommandHandler('help', help_command))
     dispatcher.add_handler(CommandHandler('about_me', about_me_command))

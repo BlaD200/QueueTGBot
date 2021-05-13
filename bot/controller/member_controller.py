@@ -6,6 +6,7 @@ from telegram import Update, Bot
 from telegram.error import BadRequest
 
 from app_logging import get_logger
+from bot.callbacks.message_buttons import get_member_action_buttons
 from localization.replies import already_in_the_queue, show_queue_members, not_in_the_queue_yet, next_reached_queue_end, \
     next_member_notify, cannot_skip
 from sql import create_session
@@ -182,6 +183,27 @@ def next_action(update: Update, queue: Queue, bot: Bot):
         update.callback_query.answer()
 
 
+def show_queue_members_action(chat_id: int, queue: Queue, bot):
+    member_names = __get_queue_members(queue)
+    message = bot.send_message(
+        chat_id=chat_id,
+        **show_queue_members(queue.name, member_names),
+        **get_member_action_buttons(queue.queue_id)
+    )
+    if message:
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=queue.message_id_to_edit)
+        except BadRequest as e:
+            logger.exception(f'Error when deleting the previously sent message: {e}')
+        queue.message_id_to_edit = message.message_id
+
+        session = create_session()
+        session.add(queue)
+        session.commit()
+
+        logger.info(f'Updated message_to_edit_id in queue:\n\t{queue}')
+
+
 def __edit_queue_members_message(queue: Queue, chat_id: int, reply_markup, bot):
     member_names = __get_queue_members(queue)
 
@@ -197,7 +219,7 @@ def __edit_queue_members_message(queue: Queue, chat_id: int, reply_markup, bot):
                          f'{e}')
         logger.warning(f'Sending a new message for the queue({queue.queue_id}) because of the previous error.')
 
-        __show_members(chat_id, queue, bot)
+        show_queue_members_action(chat_id, queue, bot)
     logger.info(f'Edited message: chat_id={chat_id}, message_id={queue.message_id_to_edit}')
 
 
@@ -213,21 +235,4 @@ def __get_queue_members(queue: Queue) -> List[str]:
     return member_names
 
 
-def __show_members(chat_id: int, queue: Queue, bot):
-    member_names = __get_queue_members(queue)
-    message = bot.send_message(
-        chat_id=chat_id,
-        **show_queue_members(queue.name, member_names, queue.current_order)
-    )
-    if message:
-        try:
-            bot.delete_message(chat_id=chat_id, message_id=queue.message_id_to_edit)
-        except BadRequest as e:
-            logger.exception(f'Error when deleting the previously sent message: {e}')
-        queue.message_id_to_edit = message.message_id
 
-        session = create_session()
-        session.add(queue)
-        session.commit()
-
-        logger.info(f'Updated message_to_edit_id in queue:\n\t{queue}')
