@@ -4,16 +4,16 @@ from typing import Callable, Any
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from app_logging import get_logger
+from app_logging import get_logger, BotCachingHandler
 from app_logging.handler_logging import log_command
-from bot.callbacks.callback_buttons import get_member_action_buttons
+from bot.callbacks.callback_buttons import get_member_action_buttons, ENG_LANGUAGE
 from bot.constants import CACHE_TIME
 from bot.controller.member_controller import add_me_action, remove_me_action, skip_me_action, \
     next_action
 from localization.replies import deleted_queue_message, callback_empty_queue_id, callback_empty_queue_id__for_pin, \
-    show_queue_members, no_rights_to_pin_message
+    show_queue_members, no_rights_to_pin_message, unexpected_error, unexpected_error_with_report, chat_language_setting
 from sql import create_session
-from sql.domain import Queue
+from sql.domain import Queue, Chat
 
 
 logger = get_logger(__name__)
@@ -111,3 +111,33 @@ def pin_queue_callback(update: Update, context: CallbackContext, queue: Queue):
         **get_member_action_buttons(queue.queue_id)
     )
     logger.info(f"Pin button was removed for queue({queue.queue_id})")
+
+
+@log_command('language_callback')
+def language_setup_for_chat_callback(update: Update, context: CallbackContext):
+    data = json.loads(update.callback_query.data)
+    lang = 'en' if data['action'] == ENG_LANGUAGE else 'ukr'
+    session = create_session()
+    chat_id = update.effective_chat.id
+    chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+    if chat:
+        try:
+            chat.language = lang
+            session.commit()
+            logger.info(f"Chat({chat.chat_id}) language was changed to {lang}.")
+            update.callback_query.answer()
+            context.bot.send_message(chat_id=chat_id, **chat_language_setting(chat.language))
+        except Exception as e:
+            logger.exception(f"ERROR when changing language for chat({chat}) "
+                             f"with message: \n{e}")
+            update.callback_query.answer()
+            update.effective_chat.send_message(**unexpected_error())
+    else:
+        logger.error(f"ERROR when changing language for chat_id({chat_id}). Chat wasn't found in DB. ",
+                     extra={BotCachingHandler.flash_to_bot: True,
+                            BotCachingHandler.error_from_chat_id: chat_id,
+                            BotCachingHandler.error_description: 'Chat wan\'t found in DB when processing '
+                                                                 'language setup callback.'}
+                     )
+        update.callback_query.answer()
+        update.effective_chat.send_message(**unexpected_error_with_report())

@@ -23,6 +23,15 @@ from app_logging import get_logger
 logger = get_logger(__name__)
 
 
+def chat_language_setting(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "👍Okay, now I'll speak *English*🇬🇧 in this chat\. Good luck😉"
+    else:
+        text = "👍Добре, тепер я буду використовувати *Українську*🇺🇦 у цьому чаті\. Насолоджуйтеся😉"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
+
+
 def private_unaccepted(lang: str = 'en'):
     text: str
     if lang == 'en':
@@ -433,7 +442,19 @@ def unimplemented_command(lang: str = 'en'):
 def unexpected_error(lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = "Something went wrong...😢😢"
+        text = "Something went wrong...😢😢\n" \
+               "You can sent error report using the /report command. " \
+               "If you describe the issue and steps, how to reproduce it in the report, this can help to fix it faster."
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
+def unexpected_error_with_report(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = "Something went wrong...😢😢 \n" \
+               "But don't worry, I've sent the error report to my developer. I suppose, this issue will be fixed soon."
     else:
         text = "TODO"
     return {'text': text}
