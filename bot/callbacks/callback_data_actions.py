@@ -5,3 +5,8 @@
     NEXT,
     NOTIFY
 ) = range(10, 15)
+
+(
+    ENG_LANGUAGE,
+    URK_LANGUAGE
+) = range(15, 17)

@@ -6,7 +6,7 @@ from telegram import Update, Bot
 from telegram.error import BadRequest
 
 from app_logging import get_logger
-from bot.callbacks.message_buttons import get_member_action_buttons
+from bot.callbacks.callback_buttons import get_member_action_buttons
 from bot.constants import CACHE_TIME
 from localization.replies import already_in_the_queue, show_queue_members, not_in_the_queue_yet, next_reached_queue_end, \
     next_member_notify, cannot_skip

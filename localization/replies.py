@@ -320,6 +320,15 @@ def notify_all_enabled_message(lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
+def select_language_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = 'Please, select the language, in which the bot will speak'
+    else:
+        text = "TODO"
+    return {'text': text}
+
+
 def about_me_message(lang: str = 'en'):
     text: str
     if lang == 'en':

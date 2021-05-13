@@ -10,6 +10,7 @@ from telegram.ext import CallbackContext, ConversationHandler
 
 import app_logging
 from app_logging.handler_logging import log_command
+from bot.callbacks.callback_buttons import get_language_select_buttons
 from bot.chat_type_accepted import group_only_handler
 from bot.controller.member_controller import add_me_action, remove_me_action, next_action, \
     skip_me_action, show_queue_members_action
@@ -23,7 +24,7 @@ from localization.replies import (
     queue_not_exist, show_queues_message_empty,
     show_queues_message, command_empty_queue_name, reply_to_wrong_message_message,
     notify_all_disabled_message, notify_all_enabled_message, enter_queue_name_message,
-    cancel_queue_creation_message, cancel_queue_deletion_message, cancel_notify_next_message
+    cancel_queue_creation_message, cancel_queue_deletion_message, cancel_notify_next_message, select_language_message
 )
 from sql import create_session
 from sql.domain import *
@@ -393,6 +394,14 @@ def notify_all_command(update: Update, context: CallbackContext):
     else:
         logging.error(f'Error fetching chat by chat_id({chat_id}) in active chat. '
                       'The chat must be in the DB, but doesn\'t.')
+
+
+def select_language_command(update: Update, context: CallbackContext):
+    """Handler for '/language' command"""
+    update.effective_message.reply_text(
+        **select_language_message(),
+        **get_language_select_buttons()
+    )
 
 
 # noinspection PyUnusedLocal

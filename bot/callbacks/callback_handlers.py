@@ -6,7 +6,7 @@ from telegram.ext import CallbackContext
 
 from app_logging import get_logger
 from app_logging.handler_logging import log_command
-from bot.callbacks.message_buttons import get_member_action_buttons
+from bot.callbacks.callback_buttons import get_member_action_buttons
 from bot.constants import CACHE_TIME
 from bot.controller.member_controller import add_me_action, remove_me_action, skip_me_action, \
     next_action

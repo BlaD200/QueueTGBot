@@ -25,7 +25,7 @@ from bot.handlers.command_handlers import (
     show_members_command, cancel_queue_creation_handler, ENTER_QUEUE_NAME_STATE, create_queue_name_handler,
     delete_queue_name_handler, cancel_queue_deletion_handler, show_queue_members_name_handler,
     cancel_show_queue_members_handler, notify_next_member_queue_name_handler,
-    cancel_notify_next_member_queue_name_handler
+    cancel_notify_next_member_queue_name_handler, select_language_command
 )
 from bot.handlers.error_handler import error_handler
 from bot.handlers.report_handler import report_command, DESCRIPTION, description_handler, \
@@ -103,6 +103,8 @@ def setup():
         fallbacks=[MessageHandler(Filters.text(cancel_keyboard_button), cancel_notify_next_member_queue_name_handler)]
     ))
 
+    dispatcher.add_handler(CommandHandler('language', select_language_command))
+
     dispatcher.add_handler(CommandHandler('help', help_command))
     dispatcher.add_handler(CommandHandler('about_me', about_me_command))
 
@@ -157,6 +159,7 @@ def _update_command_list():
     show_queues - Shows all created queues
     show_members - <queue name> Resends queue message
     notify_all - Enables\\disables pinning the queues
+    language - Allows to select the bot language
     help - Shows description
     about_me - Detailed info about the bot
     report - [Description] report an error to the developer
