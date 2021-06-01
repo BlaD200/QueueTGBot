@@ -79,6 +79,17 @@ def create_queue_empty_name(lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
+def create_queue_unsupported_name(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ('You tried to create queue with some of the reserved characters\. '
+                f'Try not to use any of them: *{escape_markdown("_*[]()~`>#+-=|{}.!", 2)}* or '
+                f'try not to use forward slash "\\\\" before any of them\.')
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
+
+
 def no_rights_to_pin_message(lang: str = 'en'):
     text: str
     if lang == 'en':
@@ -113,7 +124,7 @@ def delete_queue_empty_name(lang: str = 'en'):
 def queue_not_exist(queue_name: str, lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = f"Sorry, but the queue with the given name *{queue_name}* doesn't exist."
+        text = f"Sorry, but the queue with the given name *{escape_markdown(queue_name, 2)}* doesn't exist."
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
@@ -129,7 +140,7 @@ def deleted_queue_message(lang: str = 'en'):
 
 
 def show_queues_message(queues: List[str], lang: str = 'en'):
-    queue_names_formatted_list = [f'• *{queue_name}*\n' for queue_name in queues]
+    queue_names_formatted_list = [f'• *{escape_markdown(queue_name, 2)}*\n' for queue_name in queues]
     text: str
     if lang == 'en':
         text = ("Active Queues:\n\n"
@@ -285,7 +296,7 @@ def next_member_notify(fullname: str, user_id: int, queue_name: str, lang: str =
     text: str
     if lang == 'en':
         text = f"[{fullname.capitalize()}](tg://user?id={user_id}), " \
-               f"your turn has come in the queue *{queue_name}*\!"
+               f"your turn has come in the queue *{escape_markdown(queue_name, 2)}*\!"
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}

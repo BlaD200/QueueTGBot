@@ -6,7 +6,8 @@ from telegram.error import BadRequest
 from app_logging import get_logger
 from bot.callbacks.message_buttons import get_member_action_buttons
 from localization.replies import create_queue_exist, queue_created_remove_keyboard_message, no_rights_to_pin_message, \
-    unexpected_error, queue_not_exist, deleted_queue_message, show_queue_members, no_rights_to_unpin_message
+    queue_not_exist, deleted_queue_message, show_queue_members, no_rights_to_unpin_message, \
+    create_queue_unsupported_name
 from sql import create_session
 from sql.domain import Queue, Chat
 
@@ -62,8 +63,9 @@ def create_queue_action(update: Update, queue_name: str, bot):
         except Exception as e:
             logger.exception(f"ERROR when creating queue: \n\t{queue} "
                              f"with message: \n{e}")
-            update.effective_chat.send_message(**unexpected_error())
+            update.effective_chat.send_message(**create_queue_unsupported_name())
             session.delete(queue)
+            session.commit()
             logger.warning("Queue was deleted")
             if message:
                 message.delete()
