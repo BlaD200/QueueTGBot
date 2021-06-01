@@ -18,6 +18,7 @@ from telegram import ParseMode
 from telegram.utils.helpers import escape_markdown
 
 from app_logging import get_logger
+from bot.constants import BOT_VERSION
 
 
 logger = get_logger(__name__)
@@ -140,7 +141,7 @@ def deleted_queue_message(lang: str = 'en'):
 
 
 def show_queues_message(queues: List[str], lang: str = 'en'):
-    queue_names_formatted_list = [f'• *{escape_markdown(queue_name, 2)}*\n' for queue_name in queues]
+    queue_names_formatted_list = [f'• *{(queue_name)}*\n' for queue_name in queues]
     text: str
     if lang == 'en':
         text = ("Active Queues:\n\n"
@@ -209,12 +210,8 @@ def enter_queue_name_message(lang: str = 'en'):
     return {'text': text}
 
 
-def queue_created_remove_keyboard_message(lang: str = 'en'):
-    text: str
-    if lang == 'en':
-        text = '✅'
-    else:
-        text = "✅"
+def remove_keyboard_message(lang: str = 'en'):
+    text = '✅'
     return {'text': text}
 
 
@@ -331,6 +328,28 @@ def notify_all_enabled_message(lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
+def silent_mode_enabled_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ('_Silent mode on_\. \n\n'
+                'All unrequired messages *won\'t* be sent, including *help* messages\. '
+                'Be sure, you know how to use the bot\.')
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
+
+
+def silent_mode_disabled_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ('_Silent mode off_\. \n\n'
+                'All help and additional messages *will be* sent to give more detailed fidback\. '
+                'If you already know all aspects of the bot, you could turn it off\.')
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
+
+
 def about_me_message(lang: str = 'en'):
     text: str
     if lang == 'en':
@@ -355,7 +374,7 @@ def about_me_message(lang: str = 'en'):
             "My creator said that he will be very thankful for your feedback, any suggestions are welcomed and bug "
             "reports are priceless!\n "
             "\n"
-            "Bot version: unreleased.\n"
+            f"Bot version: {BOT_VERSION}.\n"
             "Developer: @l3_l_a_cl\n"
             "Github repository: <a href='https://github.com/BlaD200/QueueTGBot'>link</a>\n")
     else:

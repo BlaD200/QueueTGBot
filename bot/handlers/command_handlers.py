@@ -14,6 +14,7 @@ from bot.chat_type_accepted import group_only_handler
 from bot.controller.member_controller import add_me_action, remove_me_action, next_action, \
     skip_me_action, show_queue_members_action
 from bot.controller.queue_controller import create_queue_action, delete_queue_action
+from bot.utils import remove_user_keyboard, send_message_if_not_silent_or_keyboard
 from localization.keyboard_buttons import get_cancel_button_text
 from localization.replies import (
     start_message_private, start_message_chat,
@@ -23,7 +24,8 @@ from localization.replies import (
     queue_not_exist, show_queues_message_empty,
     show_queues_message, command_empty_queue_name, reply_to_wrong_message_message,
     notify_all_disabled_message, notify_all_enabled_message, enter_queue_name_message,
-    cancel_queue_creation_message, cancel_queue_deletion_message, cancel_notify_next_message
+    cancel_queue_creation_message, cancel_queue_deletion_message, cancel_notify_next_message,
+    silent_mode_enabled_message, silent_mode_disabled_message, unexpected_error
 )
 from sql import create_session
 from sql.domain import *
@@ -75,6 +77,8 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str,
             queue: Optional[Queue] = None
 
             session = create_session()
+            chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+
             # Trying to get the queue from message_id, that user replied to.
             if update.effective_message.reply_to_message:
                 replied_message_id = update.effective_message.reply_to_message.message_id
@@ -87,7 +91,10 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str,
                 # User replied to the wrong message (not with members) or to deleted queue.
                 if not queue:
                     logger.info('Replied to wrong message or to the deleted queue.')
-                    update.effective_message.reply_text(**reply_to_wrong_message_message())
+                    send_message_if_not_silent_or_keyboard(
+                        chat, update,
+                        **reply_to_wrong_message_message()
+                    )
                     return
 
             # User didn't reply to the message or replied to the wrong message.
@@ -103,13 +110,19 @@ def __insert_queue_from_context(on_no_queue_log: str, on_not_exist_log: str,
             # The name was specified but queue with this name wasn't found in DB
             if not queue and context.args:
                 logger.info(on_not_exist_log)
-                update.effective_message.reply_text(**queue_not_exist(queue_name=queue_name))
+                send_message_if_not_silent_or_keyboard(
+                    chat, update,
+                    **queue_not_exist(queue_name=queue_name)
+                )
             # The queue was found or pass_if_no_queue was set to True
             elif queue or pass_if_no_queue:
                 return command_handler_function(update, context, queue)
             else:
                 logger.info(on_no_queue_log)
-                update.effective_message.reply_text(**on_no_queue_reply)
+                send_message_if_not_silent_or_keyboard(
+                    chat, update,
+                    **on_no_queue_reply
+                )
 
         return insert_queue_from_context_wrapper
 
@@ -253,17 +266,24 @@ def show_queue_members_name_handler(update: Update, context: CallbackContext):
 
     session = create_session()
     queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
+    chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
     if queue is None:
         logger.info("Show members command for nonexistent queue.")
-        update.effective_message.reply_text(
-            **queue_not_exist(queue_name=queue_name),
-            reply_markup=ReplyKeyboardRemove(selective=True)
+        send_message_if_not_silent_or_keyboard(
+            chat, update,
+            'delete_queue' not in update.effective_message.text,
+            **queue_not_exist(queue_name=queue_name), reply_markup=ReplyKeyboardRemove(selective=True)
         )
     else:
         queue_name = update.effective_message.text
         queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
         show_queue_members_action(update.effective_chat.id, queue, context.bot)
-        return ConversationHandler.END
+
+        # Send the reply to hide the keyboard for the user if one was present
+        if 'show_members' not in update.effective_message.text:
+            remove_user_keyboard(update)
+
+    return ConversationHandler.END
 
 
 def cancel_show_queue_members_handler(update: Update, context: CallbackContext) -> int:
@@ -393,6 +413,30 @@ def notify_all_command(update: Update, context: CallbackContext):
     else:
         logging.error(f'Error fetching chat by chat_id({chat_id}) in active chat. '
                       'The chat must be in the DB, but doesn\'t.')
+
+
+@log_command('silent_mode')
+@group_only_handler
+def silent_mode_command(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    session = create_session()
+    chat: Chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+    if chat:
+        if chat.silent_mode:
+            chat.silent_mode = False
+            session.merge(chat)
+            session.commit()
+            update.effective_chat.send_message(**silent_mode_disabled_message())
+        else:
+            chat.silent_mode = True
+            session.merge(chat)
+            session.commit()
+            update.effective_chat.send_message(**silent_mode_enabled_message())
+        logger.info(f'Changed silent mode setting to {chat.silent_mode} in chat({chat_id})')
+    else:
+        logging.error(f'Error fetching chat by chat_id({chat_id}) in active chat. '
+                      'The chat must be in the DB, but doesn\'t.')
+        update.effective_message.reply_text(**unexpected_error())
 
 
 # noinspection PyUnusedLocal

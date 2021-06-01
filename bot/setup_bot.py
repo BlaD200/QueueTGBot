@@ -24,7 +24,7 @@ from bot.handlers.command_handlers import (
     show_members_command, cancel_queue_creation_handler, ENTER_QUEUE_NAME_STATE, create_queue_name_handler,
     delete_queue_name_handler, cancel_queue_deletion_handler, show_queue_members_name_handler,
     cancel_show_queue_members_handler, notify_next_member_queue_name_handler,
-    cancel_notify_next_member_queue_name_handler
+    cancel_notify_next_member_queue_name_handler, silent_mode_command
 )
 from bot.handlers.error_handler import error_handler
 from bot.handlers.report_handler import report_command, DESCRIPTION, description_handler, \
@@ -87,6 +87,7 @@ def setup():
     ))
     dispatcher.add_handler(CommandHandler('show_queues', show_queues_command))
     dispatcher.add_handler(CommandHandler('notify_all', notify_all_command))
+    dispatcher.add_handler(CommandHandler('silent_mode', silent_mode_command))
 
     dispatcher.add_handler(CommandHandler('add_me', add_me_command))
     dispatcher.add_handler(CommandHandler('remove_me', remove_me_command))
@@ -159,9 +160,10 @@ def _update_command_list():
     remove_me - <queue name> Removes you from the queue
     skip_me - <queue name> Moves you down in the queue
     next - <queue name> Notifies next person in the queue and moves queue down
-    show_queues - Shows all created queues
     show_members - <queue name> Resends queue message
+    show_queues - Shows all created queues
     notify_all - Enables\\disables pinning the queues
+    silent_mode - Enables\\disables help messages
     help - Shows description
     about_me - Detailed info about the bot
     report - [Description] report an error to the developer
