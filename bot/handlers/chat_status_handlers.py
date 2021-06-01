@@ -164,6 +164,33 @@ def group_migrated_handler(update: Update, context: CallbackContext):
             logger.info(f'Updated chat_id for chat({update.effective_chat.id})')
 
 
+def group_title_changed_handler(update: Update, context: CallbackContext):
+    """
+    Triggers when chat title changes and updates it in the DB.
+
+    Args:
+        update: :class:`telegram.Update`
+        context: :class:`telegram.CallbackContext`
+    """
+    new_title = update.effective_message.new_chat_title
+    chat_id = update.effective_chat.id
+    logger.info(f"New chat title({new_title}) for chat({chat_id}).")
+    session = create_session()
+    try:
+        chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+        if chat:
+            chat.name = new_title
+            session.merge(chat)
+            session.commit()
+            logger.info(f"Chat title changed for chat({chat_id}).")
+        else:
+            logger.warning(f"Tried to change title for chat({chat_id}), but wasn't found in DB.")
+    except Exception as e:
+        logger.error(f"ERROR while changing the title of the chat({chat_id}):\n" + str(e) + '\n')
+        session.rollback()
+        logger.warning("Session was rolled back.")
+
+
 __all__ = [
     'new_group_created_handler',
     'new_group_member_handler',
