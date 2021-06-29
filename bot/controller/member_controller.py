@@ -8,10 +8,11 @@ from telegram.error import BadRequest
 from app_logging import get_logger
 from bot.callbacks.callback_buttons import get_member_action_buttons
 from bot.constants import CACHE_TIME
+from bot.utils import send_message_if_not_silent_or_keyboard
 from localization.replies import already_in_the_queue, show_queue_members, not_in_the_queue_yet, next_reached_queue_end, \
     next_member_notify, cannot_skip
 from sql import create_session
-from sql.domain import QueueMember, Queue
+from sql.domain import QueueMember, Queue, Chat
 
 
 logger = get_logger(__name__)
@@ -23,6 +24,7 @@ def add_me_action(update: Update, queue: Queue, bot: Bot):
     queue_id = queue.queue_id
 
     session = create_session()
+    chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
     member = (session
               .query(QueueMember)
               .filter(QueueMember.queue_id == queue_id,
@@ -32,8 +34,10 @@ def add_me_action(update: Update, queue: Queue, bot: Bot):
         if update.callback_query:
             update.callback_query.answer(**already_in_the_queue(), cache_time=CACHE_TIME)
         else:
-            # TODO add silence setting
-            update.effective_message.reply_text(**already_in_the_queue())
+            send_message_if_not_silent_or_keyboard(
+                chat, update,
+                **already_in_the_queue()
+            )
         return
 
     last_member: QueueMember = (
@@ -67,13 +71,17 @@ def remove_me_action(update: Update, queue: Queue, bot: Bot):
                            .query(QueueMember)
                            .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_id == user_id)
                            .first())
+    chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
     if member is None:
         logger.info('Not yet in the queue')
         if update.callback_query:
             update.callback_query.answer(**not_in_the_queue_yet(), cache_time=CACHE_TIME)
         else:
-            # TODO add silence setting
-            update.effective_message.reply_text(**not_in_the_queue_yet())
+            send_message_if_not_silent_or_keyboard(
+                chat, update,
+                'remove_me' not in update.effective_message.text,
+                **not_in_the_queue_yet()
+            )
     else:
         # If it was the last member return turn to the previous one
         last_member: QueueMember = (
@@ -117,13 +125,16 @@ def skip_me_action(update: Update, queue: Queue, bot: Bot):
             .filter(QueueMember.queue_id == queue.queue_id,
                     QueueMember.user_id == update.effective_user.id)
             .first())
+    chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
     if member is None:
         logger.info('Not yet in the queue')
         if update.callback_query:
             update.callback_query.answer(**not_in_the_queue_yet(), cache_time=CACHE_TIME)
         else:
-            # TODO add silence setting
-            update.effective_message.reply_text(**not_in_the_queue_yet())
+            send_message_if_not_silent_or_keyboard(
+                chat, update,
+                **not_in_the_queue_yet()
+            )
     else:
         next_member: QueueMember = (
             session
@@ -146,11 +157,15 @@ def skip_me_action(update: Update, queue: Queue, bot: Bot):
             if update.callback_query:
                 update.callback_query.answer(**cannot_skip(), cache_time=CACHE_TIME)
             else:
-                # TODO add silence setting
-                update.effective_message.reply_text(**cannot_skip())
+                send_message_if_not_silent_or_keyboard(
+                    chat, update,
+                    **cannot_skip()
+                )
 
 
 def next_action(update: Update, queue: Queue, bot: Bot):
+    chat_id = update.effective_chat.id
+
     order = queue.current_order + 1
     queue.current_order = order
     reply_markup = update.effective_message.reply_markup
@@ -162,13 +177,16 @@ def next_action(update: Update, queue: Queue, bot: Bot):
             .filter(QueueMember.queue_id == queue.queue_id, QueueMember.user_order == queue.current_order)
             .first()
     )
+    chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
     if member is None:
         logger.info(f"Reached the end of the queue({queue.queue_id})")
         if update.callback_query:
             update.callback_query.answer(**next_reached_queue_end(), cache_time=CACHE_TIME)
         else:
-            # TODO add silence setting
-            update.effective_message.reply_text(**next_reached_queue_end())
+            send_message_if_not_silent_or_keyboard(
+                chat, update,
+                **next_reached_queue_end()
+            )
     else:
         logger.info(f'Next member: {member}')
         update.effective_chat.send_message(**next_member_notify(member.fullname, member.user_id, queue.name))

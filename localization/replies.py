@@ -18,6 +18,7 @@ from telegram import ParseMode
 from telegram.utils.helpers import escape_markdown
 
 from app_logging import get_logger
+from bot.constants import BOT_VERSION
 
 
 logger = get_logger(__name__)
@@ -88,6 +89,17 @@ def create_queue_empty_name(lang: str = 'en'):
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
 
 
+def create_queue_unsupported_name(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ('You tried to create queue with some of the reserved characters\. '
+                f'Try not to use any of them: *{escape_markdown("_*[]()~`>#+-=|{}.!", 2)}* or '
+                f'try not to use forward slash "\\\\" before any of them\.')
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
+
+
 def no_rights_to_pin_message(lang: str = 'en'):
     text: str
     if lang == 'en':
@@ -122,7 +134,7 @@ def delete_queue_empty_name(lang: str = 'en'):
 def queue_not_exist(queue_name: str, lang: str = 'en'):
     text: str
     if lang == 'en':
-        text = f"Sorry, but the queue with the given name *{queue_name}* doesn't exist."
+        text = f"Sorry, but the queue with the given name *{escape_markdown(queue_name, 2)}* doesn't exist."
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
@@ -138,7 +150,7 @@ def deleted_queue_message(lang: str = 'en'):
 
 
 def show_queues_message(queues: List[str], lang: str = 'en'):
-    queue_names_formatted_list = [f'• *{queue_name}*\n' for queue_name in queues]
+    queue_names_formatted_list = [f'• *{(queue_name)}*\n' for queue_name in queues]
     text: str
     if lang == 'en':
         text = ("Active Queues:\n\n"
@@ -207,12 +219,8 @@ def enter_queue_name_message(lang: str = 'en'):
     return {'text': text}
 
 
-def queue_created_remove_keyboard_message(lang: str = 'en'):
-    text: str
-    if lang == 'en':
-        text = '✅'
-    else:
-        text = "✅"
+def remove_keyboard_message(lang: str = 'en'):
+    text = '✅'
     return {'text': text}
 
 
@@ -294,7 +302,7 @@ def next_member_notify(fullname: str, user_id: int, queue_name: str, lang: str =
     text: str
     if lang == 'en':
         text = f"[{fullname.capitalize()}](tg://user?id={user_id}), " \
-               f"your turn has come in the queue *{queue_name}*\!"
+               f"your turn has come in the queue *{escape_markdown(queue_name, 2)}*\!"
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
@@ -327,6 +335,28 @@ def notify_all_enabled_message(lang: str = 'en'):
     else:
         text = "TODO"
     return {'text': text, 'parse_mode': ParseMode.MARKDOWN}
+
+
+def silent_mode_enabled_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ('_Silent mode on_\. \n\n'
+                'All unrequired messages *won\'t* be sent, including *help* messages\. '
+                'Be sure, you know how to use the bot\.')
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
+
+
+def silent_mode_disabled_message(lang: str = 'en'):
+    text: str
+    if lang == 'en':
+        text = ('_Silent mode off_\. \n\n'
+                'All help and additional messages *will be* sent to give more detailed fidback\. '
+                'If you already know all aspects of the bot, you could turn it off\.')
+    else:
+        text = "TODO"
+    return {'text': text, 'parse_mode': ParseMode.MARKDOWN_V2}
 
 
 def select_language_message(lang: str = 'en'):
@@ -362,7 +392,7 @@ def about_me_message(lang: str = 'en'):
             "My creator said that he will be very thankful for your feedback, any suggestions are welcomed and bug "
             "reports are priceless!\n "
             "\n"
-            "Bot version: unreleased.\n"
+            f"Bot version: {BOT_VERSION}.\n"
             "Developer: @l3_l_a_cl\n"
             "Github repository: <a href='https://github.com/BlaD200/QueueTGBot'>link</a>\n")
     else:

@@ -8,11 +8,10 @@ from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, Callb
 
 import app_logging
 from bot.callbacks.callback_setup import setup_callbacks
-from bot.chat_type_accepted import private_only_handler
 from bot.constants import BOT_TOKEN, BOT_VERSION
 from bot.handlers.chat_status_handlers import (
     new_group_member_handler, left_group_member_handler, group_migrated_handler,
-    new_group_created_handler
+    new_group_created_handler, group_title_changed_handler
 )
 from bot.handlers.command_handlers import (
     start_command,
@@ -25,6 +24,7 @@ from bot.handlers.command_handlers import (
     show_members_command, cancel_queue_creation_handler, ENTER_QUEUE_NAME_STATE, create_queue_name_handler,
     delete_queue_name_handler, cancel_queue_deletion_handler, show_queue_members_name_handler,
     cancel_show_queue_members_handler, notify_next_member_queue_name_handler,
+    cancel_notify_next_member_queue_name_handler, silent_mode_command,
     cancel_notify_next_member_queue_name_handler, select_language_command
 )
 from bot.handlers.error_handler import error_handler
@@ -88,6 +88,7 @@ def setup():
     ))
     dispatcher.add_handler(CommandHandler('show_queues', show_queues_command))
     dispatcher.add_handler(CommandHandler('notify_all', notify_all_command))
+    dispatcher.add_handler(CommandHandler('silent_mode', silent_mode_command))
 
     dispatcher.add_handler(CommandHandler('add_me', add_me_command))
     dispatcher.add_handler(CommandHandler('remove_me', remove_me_command))
@@ -111,8 +112,6 @@ def setup():
     # Inline buttons handlers setup
     setup_callbacks(dispatcher)
 
-    # Registering conversation handlers here
-
     # Handler for the reports functionality
     dispatcher.add_handler(ConversationHandler(
         entry_points=[CommandHandler('report', report_command)],
@@ -132,10 +131,18 @@ def setup():
     dispatcher.add_handler(MessageHandler(Filters.status_update.left_chat_member, left_group_member_handler))
     dispatcher.add_handler(MessageHandler(Filters.status_update.migrate, group_migrated_handler))
     dispatcher.add_handler(MessageHandler(Filters.status_update.chat_created, new_group_created_handler))
+    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_title, group_title_changed_handler))
 
     # Handlers for unsupported messages and commands.
-    dispatcher.add_handler(MessageHandler(Filters.command & (Filters.regex(rf'.*@{bot.username}')
-                                                             | Filters.regex(r'/\w+$')), unsupported_command_handler))
+    dispatcher.add_handler(
+        MessageHandler(
+            Filters.command & (
+                # For the groups only reply to commands with bot username
+                    (Filters.chat_type.groups & Filters.regex(rf'/\w+@{bot.username}')) |
+                    # For the private chats reply to messages with whether username or not
+                    (Filters.chat_type.private & Filters.regex(rf'/\w+(@{bot.username})?'))
+            ), unsupported_command_handler)
+    )
     dispatcher.add_handler(MessageHandler(Filters.all & Filters.chat_type.private, unexpected_message))
 
     # Handle for errors
@@ -156,9 +163,10 @@ def _update_command_list():
     remove_me - <queue name> Removes you from the queue
     skip_me - <queue name> Moves you down in the queue
     next - <queue name> Notifies next person in the queue and moves queue down
-    show_queues - Shows all created queues
     show_members - <queue name> Resends queue message
+    show_queues - Shows all created queues
     notify_all - Enables\\disables pinning the queues
+    silent_mode - Enables\\disables help messages
     language - Allows to select the bot language
     help - Shows description
     about_me - Detailed info about the bot
@@ -175,7 +183,7 @@ def _update_command_list():
 
 
 # noinspection PyUnusedLocal
-@private_only_handler
+# @private_only_handler
 def unexpected_message(update: Update, context: CallbackContext):
     logger.info(f"Unexpected message: [chat_id: {update.effective_chat.id}; message: {update.effective_message.text}]")
     pass

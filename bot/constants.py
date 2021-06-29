@@ -2,7 +2,7 @@
 from os import getenv
 
 
-BOT_VERSION = 'v1.0.1'
+BOT_VERSION = 'v1.0.3'
 
 BOT_TOKEN = getenv('BOT_TOKEN')
 WEBHOOK_URL = getenv('WEBHOOK_URL')
