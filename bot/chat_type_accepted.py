@@ -6,7 +6,9 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 from app_logging import get_logger
-from localization.replies import private_unaccepted
+from localization.info_and_help_strings import InfoAndHelpStrings
+from sql import create_session
+from sql.domain import Chat
 
 
 logger = get_logger(__name__)
@@ -21,7 +23,7 @@ def group_only_handler(handler: Callable[[Update, CallbackContext], Any]):
 
     Note:
         The wrapped function will be called ONLY if the chat type is 'group' or 'supergroup'.
-        Otherwise will be sent ``bot.constants.private_unaccepted``
+        Otherwise will be sent ``bot.constants.private_unaccepted_message``
 
         You can also use ``Filters.chat_type.private`` for filtering your messages.
 
@@ -32,8 +34,16 @@ def group_only_handler(handler: Callable[[Update, CallbackContext], Any]):
     """
 
     def group_only_command_wrapper(update: Update, context: CallbackContext):
+        chat_id = update.effective_chat.id
+        session = create_session()
+        chat: Chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+
+        if chat:
+            info_strings = InfoAndHelpStrings(chat.language)
+        else:
+            info_strings = InfoAndHelpStrings('en')
         if update.effective_chat.type == 'private' or update.effective_chat.type == 'channel':
-            update.effective_message.reply_text(**private_unaccepted())
+            update.effective_message.reply_text(**info_strings.private_unaccepted_message())
         else:
             return handler(update, context)
 

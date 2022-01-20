@@ -6,10 +6,7 @@ from telegram.error import BadRequest
 from app_logging import get_logger
 from bot.callbacks.callback_buttons import get_member_action_buttons
 from bot.utils import remove_user_keyboard, send_message_if_not_silent_or_keyboard
-from localization.replies import (
-    create_queue_exist, queue_not_exist, deleted_queue_message, show_queue_members, no_rights_to_unpin_message,
-    create_queue_unsupported_name
-)
+from localization import QueueActionsStrings, UnwantedBehaviourStrings
 from sql import create_session
 from sql.domain import Queue, Chat
 
@@ -23,12 +20,14 @@ def create_queue_action(update: Update, queue_name: str, bot):
     session = create_session()
     count = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).count()
     chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+    strings = QueueActionsStrings(chat.language)
     if count == 1:
         logger.info("Creating a queue with an existing name")
+
         send_message_if_not_silent_or_keyboard(
             chat, update,
             'create_queue' not in update.effective_message.text,
-            **create_queue_exist(queue_name=queue_name), reply_markup=ReplyKeyboardRemove(selective=True)
+            **strings.create_queue_exist(queue_name=queue_name), reply_markup=ReplyKeyboardRemove(selective=True)
         )
     else:
         queue = Queue(name=queue_name, chat_id=chat_id)
@@ -37,11 +36,11 @@ def create_queue_action(update: Update, queue_name: str, bot):
             session.add(queue)
             session.commit()
 
-            chat: Chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+            # chat: Chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
 
             message = update.effective_chat.send_message(
-                **show_queue_members(queue.name),
-                **get_member_action_buttons(queue.queue_id, not chat.notify)
+                **strings.show_queue_members(queue.name),
+                **get_member_action_buttons(queue.queue_id, queue.chat.language, not chat.notify)
             )
 
             queue.message_id_to_edit = message.message_id
@@ -60,14 +59,15 @@ def create_queue_action(update: Update, queue_name: str, bot):
                     message.pin()
             # If the message should be pinned, but the bot hasn't got rights.
             elif queue.chat.notify:
+                error_strings = UnwantedBehaviourStrings(chat.language)
                 send_message_if_not_silent_or_keyboard(
                     chat, update,
-                    **create_queue_exist(queue_name=queue_name), reply_markup=ReplyKeyboardRemove(selective=True)
+                    **error_strings.no_rights_to_pin_message(), reply_markup=ReplyKeyboardRemove(selective=True)
                 )
         except Exception as e:
             logger.exception(f"ERROR when creating queue: \n\t{queue} "
                              f"with message: \n{e}")
-            update.effective_chat.send_message(**create_queue_unsupported_name())
+            update.effective_chat.send_message(**strings.create_queue_unsupported_name())
             session.delete(queue)
             session.commit()
             logger.warning("Queue was deleted")
@@ -81,12 +81,14 @@ def delete_queue_action(update: Update, queue_name: str, bot):
     session = create_session()
     queue: Queue = session.query(Queue).filter(Queue.chat_id == chat_id, Queue.name == queue_name).first()
     chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
+
+    strings = QueueActionsStrings(chat.language)
     if queue is None:
         logger.info("Deletion nonexistent queue.")
         send_message_if_not_silent_or_keyboard(
             chat, update,
             'delete_queue' not in update.effective_message.text,
-            **queue_not_exist(queue_name=queue_name), reply_markup=ReplyKeyboardRemove(selective=True)
+            **strings.queue_not_exist(queue_name=queue_name), reply_markup=ReplyKeyboardRemove(selective=True)
         )
     else:
         session.delete(queue)
@@ -95,7 +97,7 @@ def delete_queue_action(update: Update, queue_name: str, bot):
         send_message_if_not_silent_or_keyboard(
             chat, update,
             'delete_queue' not in update.effective_message.text,
-            **deleted_queue_message(), reply_markup=ReplyKeyboardRemove(selective=True)
+            **strings.deleted_queue_message(), reply_markup=ReplyKeyboardRemove(selective=True)
         )
 
         if bot.get_chat_member(chat_id, bot.id).can_pin_messages:
@@ -107,7 +109,7 @@ def delete_queue_action(update: Update, queue_name: str, bot):
                                f"{e}")
             try:
                 bot.edit_message_text(
-                    **show_queue_members(queue_name),
+                    **strings.show_queue_members(queue_name),
                     chat_id=chat_id,
                     message_id=queue.message_id_to_edit,
                     reply_markup=InlineKeyboardMarkup([]))
@@ -116,7 +118,8 @@ def delete_queue_action(update: Update, queue_name: str, bot):
                                f"the message({queue.message_id_to_edit}) in the queue({queue.queue_id}):\n\t"
                                f"{e}")
         else:
+            error_strings = UnwantedBehaviourStrings(chat.language)
             send_message_if_not_silent_or_keyboard(
                 chat, update,
-                **no_rights_to_unpin_message()
+                **error_strings.no_rights_to_unpin_message()
             )

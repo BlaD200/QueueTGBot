@@ -9,8 +9,8 @@ from app_logging import get_logger
 from bot.callbacks.callback_buttons import get_member_action_buttons
 from bot.constants import CACHE_TIME
 from bot.utils import send_message_if_not_silent_or_keyboard
-from localization.replies import already_in_the_queue, show_queue_members, not_in_the_queue_yet, next_reached_queue_end, \
-    next_member_notify, cannot_skip
+from localization.members_strings import MemberActionsStrings
+from localization.queue_actions_strings import QueueActionsStrings
 from sql import create_session
 from sql.domain import QueueMember, Queue, Chat
 
@@ -31,12 +31,13 @@ def add_me_action(update: Update, queue: Queue, bot: Bot):
                       QueueMember.user_id == user_id).first())
     if member is not None:
         logger.info("Already in the queue.")
+        strings = QueueActionsStrings(chat.language)
         if update.callback_query:
-            update.callback_query.answer(**already_in_the_queue(), cache_time=CACHE_TIME)
+            update.callback_query.answer(**strings.already_in_the_queue(), cache_time=CACHE_TIME)
         else:
             send_message_if_not_silent_or_keyboard(
                 chat, update,
-                **already_in_the_queue()
+                **strings.already_in_the_queue()
             )
         return
 
@@ -74,13 +75,14 @@ def remove_me_action(update: Update, queue: Queue, bot: Bot):
     chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
     if member is None:
         logger.info('Not yet in the queue')
+        strings = QueueActionsStrings(chat.language)
         if update.callback_query:
-            update.callback_query.answer(**not_in_the_queue_yet(), cache_time=CACHE_TIME)
+            update.callback_query.answer(**strings.not_in_the_queue_yet(), cache_time=CACHE_TIME)
         else:
             send_message_if_not_silent_or_keyboard(
                 chat, update,
                 'remove_me' not in update.effective_message.text,
-                **not_in_the_queue_yet()
+                **strings.not_in_the_queue_yet()
             )
     else:
         # If it was the last member return turn to the previous one
@@ -128,12 +130,13 @@ def skip_me_action(update: Update, queue: Queue, bot: Bot):
     chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
     if member is None:
         logger.info('Not yet in the queue')
+        strings = QueueActionsStrings(chat.language)
         if update.callback_query:
-            update.callback_query.answer(**not_in_the_queue_yet(), cache_time=CACHE_TIME)
+            update.callback_query.answer(**strings.not_in_the_queue_yet(), cache_time=CACHE_TIME)
         else:
             send_message_if_not_silent_or_keyboard(
                 chat, update,
-                **not_in_the_queue_yet()
+                **strings.not_in_the_queue_yet()
             )
     else:
         next_member: QueueMember = (
@@ -154,12 +157,13 @@ def skip_me_action(update: Update, queue: Queue, bot: Bot):
                 update.callback_query.answer()
         else:
             logger.info(f'Cancel skipping because of no other members in queue({queue.queue_id})')
+            strings = MemberActionsStrings(chat.language)
             if update.callback_query:
-                update.callback_query.answer(**cannot_skip(), cache_time=CACHE_TIME)
+                update.callback_query.answer(**strings.cannot_skip(), cache_time=CACHE_TIME)
             else:
                 send_message_if_not_silent_or_keyboard(
                     chat, update,
-                    **cannot_skip()
+                    **strings.cannot_skip()
                 )
 
 
@@ -180,16 +184,18 @@ def next_action(update: Update, queue: Queue, bot: Bot):
     chat = session.query(Chat).filter(Chat.chat_id == chat_id).first()
     if member is None:
         logger.info(f"Reached the end of the queue({queue.queue_id})")
+        strings = QueueActionsStrings(chat.language)
         if update.callback_query:
-            update.callback_query.answer(**next_reached_queue_end(), cache_time=CACHE_TIME)
+            update.callback_query.answer(**strings.next_reached_queue_end(), cache_time=CACHE_TIME)
         else:
             send_message_if_not_silent_or_keyboard(
                 chat, update,
-                **next_reached_queue_end()
+                **strings.next_reached_queue_end()
             )
     else:
         logger.info(f'Next member: {member}')
-        update.effective_chat.send_message(**next_member_notify(member.fullname, member.user_id, queue.name))
+        strings = MemberActionsStrings(chat.language)
+        update.effective_chat.send_message(**strings.next_member_notify(member.fullname, member.user_id, queue.name))
 
         session.merge(queue)
         session.commit()
@@ -202,10 +208,11 @@ def next_action(update: Update, queue: Queue, bot: Bot):
 
 def show_queue_members_action(chat_id: int, queue: Queue, bot):
     member_names = __get_queue_members(queue)
+    strings = QueueActionsStrings(queue.chat.language)
     message = bot.send_message(
         chat_id=chat_id,
-        **show_queue_members(queue.name, member_names),
-        **get_member_action_buttons(queue.queue_id)
+        **strings.show_queue_members(queue.name, member_names),
+        **get_member_action_buttons(queue.queue_id, queue.chat.language)
     )
     if message:
         try:
@@ -225,11 +232,12 @@ def __edit_queue_members_message(queue: Queue, chat_id: int, bot):
     member_names = __get_queue_members(queue)
 
     try:
+        strings = QueueActionsStrings(queue.chat.language)
         bot.edit_message_text(
             chat_id=chat_id,
             message_id=queue.message_id_to_edit,
-            **get_member_action_buttons(queue.queue_id),
-            **show_queue_members(queue.name, member_names, queue.current_order)
+            **get_member_action_buttons(queue.queue_id, queue.chat.language),
+            **strings.show_queue_members(queue.name, member_names, queue.current_order)
         )
     except BadRequest as e:
         logger.exception(f'ERROR when editing the message({queue.message_id_to_edit}) for queue({queue.queue_id}): \n\t'

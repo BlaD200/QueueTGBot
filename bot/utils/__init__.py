@@ -1,7 +1,7 @@
 from telegram import Update, ReplyKeyboardRemove
 
 from app_logging import get_logger
-from localization.replies import remove_keyboard_message
+from localization.info_and_help_strings import remove_keyboard_message
 from sql.domain import Chat
 
 
@@ -12,6 +12,7 @@ def remove_user_keyboard(update: Update):
     """
     Sends message with :class:`telegram.ReplyKeyboardRemove` reply markup to remove the keyboard for the user.
     """
+
     message = update.effective_message.reply_text(
         **remove_keyboard_message(),
         reply_markup=ReplyKeyboardRemove(selective=True)

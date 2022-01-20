@@ -3,10 +3,11 @@
     REMOVE_ME,
     SKIP_ME,
     NEXT,
-    NOTIFY
-) = range(10, 15)
+    NOTIFY,
+    GO_END
+) = range(10, 16)
 
 (
     ENG_LANGUAGE,
     URK_LANGUAGE
-) = range(15, 17)
+) = range(20, 22)
