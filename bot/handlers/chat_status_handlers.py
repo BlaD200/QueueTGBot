@@ -38,6 +38,10 @@ def __save_chat_to_db(chat_id: int, chat_title: str):
         logger.warning("Session was rolled back.")
 
 
+def new_private_chat_started(update: Update, context: CallbackContext):
+    pass
+
+
 # noinspection PyUnusedLocal
 def new_group_created_handler(update: Update, context: CallbackContext):
     """
@@ -195,5 +199,6 @@ __all__ = [
     'new_group_created_handler',
     'new_group_member_handler',
     'left_group_member_handler',
-    'group_migrated_handler'
+    'group_migrated_handler',
+    'new_private_chat_started'
 ]

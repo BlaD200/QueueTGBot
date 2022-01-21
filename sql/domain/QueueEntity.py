@@ -23,7 +23,7 @@ class Queue(Base):
     chat = relationship(
         'Chat',
         back_populates='queue_ids',
-        lazy=True
+        lazy='joined'
     )
     members: list = relationship('QueueMember',
                                  cascade="all, delete, delete-orphan")

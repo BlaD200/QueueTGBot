@@ -16,6 +16,7 @@ class Chat(Base):
     name = Column(String, nullable=False)
     notify = Column(BOOLEAN, nullable=False, default=True)
     silent_mode = Column(BOOLEAN, nullable=False, default=False)
+    language = Column(String, nullable=False, default="en")
 
     created_at = Column(TIMESTAMP, nullable=False, default=datetime.now())
 
